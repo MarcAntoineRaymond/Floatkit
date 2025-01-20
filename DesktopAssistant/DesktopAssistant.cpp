@@ -13,7 +13,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    LoadWaifu(hInstance);
+    LoadWaifu();
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -74,7 +74,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             UINT uFlag = MF_BYPOSITION | MF_STRING;
             GetCursorPos(&clickOffset);
             hPopMenu = CreatePopupMenu();
-            InsertMenu(hPopMenu, 0xFFFFFFFF, MF_BYPOSITION | MF_STRING, ID_MENU_ABOUT, L"About");
             if (bStopped == TRUE)
             {
                 uFlag |= MF_GRAYED;
@@ -88,6 +87,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             {
                 InsertMenu(hPopMenu, 0xFFFFFFFF, MF_BYPOSITION | MF_STRING, ID_MENU_STOP, L"Stop");
             }
+            InsertMenu(hPopMenu, 0xFFFFFFFF, MF_BYPOSITION | MF_STRING, ID_MENU_OPTIONS, L"Options");
+            InsertMenu(hPopMenu, 0xFFFFFFFF, MF_SEPARATOR, IDM_SEP, L"SEP");
+            InsertMenu(hPopMenu, 0xFFFFFFFF, MF_BYPOSITION | MF_STRING, ID_MENU_ABOUT, L"About");
             InsertMenu(hPopMenu, 0xFFFFFFFF, MF_BYPOSITION | MF_STRING, ID_MENU_EXIT, L"Exit");
 
             SetForegroundWindow(hwnd);
@@ -112,6 +114,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         case ID_MENU_START:
             bStopped = FALSE;
             ShowWindow(hwnd, nCmd);
+            break;
+        case ID_MENU_OPTIONS:
+            SelectOptions();
+            UpdateImage(hwnd);
             break;
         case ID_MENU_EXIT:
             DestroyWindow(hwnd);
@@ -169,10 +175,92 @@ void UpdateImage(HWND hwnd) {
     ReleaseDC(NULL, hdcScreen);
 }
 
-void LoadWaifu(HINSTANCE hinstance)
+void LoadWaifu()
 {
     Gdiplus::Bitmap bitmap(L"Shizuka.png");
     bitmap.GetHBITMAP(NULL, &hBitmap);
     waifuWidth = bitmap.GetWidth();
     waifuHeight = bitmap.GetHeight();
+}
+
+void SelectOptions()
+{
+    std::wstring imgPath = SearchImage();
+    Gdiplus::Bitmap bitmap(imgPath.c_str());
+    bitmap.GetHBITMAP(NULL, &hBitmap);
+}
+
+std::wstring SearchImage()
+{
+    HRESULT hr;
+    std::wstring filePath;
+
+    // Initialize COM
+    hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (FAILED(hr))
+        return filePath;
+
+    // Create the File Open Dialog object
+    IFileOpenDialog* pFileOpen = nullptr;
+    hr = CoCreateInstance(CLSID_FileOpenDialog, NULL, CLSCTX_ALL, IID_IFileOpenDialog, reinterpret_cast<void**>(&pFileOpen));
+
+    if (SUCCEEDED(hr))
+    {
+        PWSTR documentsPath = nullptr;
+        hr = SHGetKnownFolderPath(FOLDERID_Documents, 0, NULL, &documentsPath);
+
+        if (SUCCEEDED(hr))
+        {
+            // Append "\WaifusModels" to the Documents path
+            std::wstring modelsFolder = documentsPath;
+            modelsFolder += L"\\WaifusModels";
+
+            // Convert std::wstring to IShellItem*
+            IShellItem* pDefaultFolder = nullptr;
+            hr = SHCreateItemFromParsingName(modelsFolder.c_str(), NULL, IID_PPV_ARGS(&pDefaultFolder));
+
+            if (SUCCEEDED(hr))
+            {
+                // Set the default folder
+                pFileOpen->SetDefaultFolder(pDefaultFolder);
+                pDefaultFolder->Release();
+            }
+
+            CoTaskMemFree(documentsPath);
+        }
+
+        // Set the default extension to be ".png" file.
+        hr = pFileOpen->SetDefaultExtension(L"png;jpg");
+        if (SUCCEEDED(hr))
+        {
+            // Show the Open dialog box
+            hr = pFileOpen->Show(NULL);
+
+            // Get the file name from the dialog box
+            if (SUCCEEDED(hr))
+            {
+                IShellItem* pItem = nullptr;
+                hr = pFileOpen->GetResult(&pItem);
+                if (SUCCEEDED(hr))
+                {
+                    PWSTR pszFilePath = nullptr;
+                    hr = pItem->GetDisplayName(SIGDN_FILESYSPATH, &pszFilePath);
+
+                    // Convert PWSTR to std::wstring
+                    if (SUCCEEDED(hr))
+                    {
+                        filePath = pszFilePath;
+                        CoTaskMemFree(pszFilePath);
+                    }
+                    pItem->Release();
+                }
+            }
+        }
+        pFileOpen->Release();
+    }
+
+    // Uninitialize COM
+    CoUninitialize();
+
+    return filePath;
 }
