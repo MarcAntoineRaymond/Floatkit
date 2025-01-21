@@ -13,7 +13,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    LoadWaifu();
+    LoadFileIntoBitmap(L"Shizuka.png", &hBitmap);
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -29,7 +29,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     if (!hwnd) return -1;
 
     nCmd = nCmdShow;
-    UpdateImage(hwnd);
+    UpdateImage(hwnd, hBitmap);
+    //InitOpenGL(hwnd);
     ShowWindow(hwnd, nCmd);
     InitNotifyIcon(hwnd, hInstance);
 
@@ -116,8 +117,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             ShowWindow(hwnd, nCmd);
             break;
         case ID_MENU_OPTIONS:
-            SelectOptions();
-            UpdateImage(hwnd);
+            OpenOptions();
+            UpdateImage(hwnd, hBitmap);
             break;
         case ID_MENU_EXIT:
             DestroyWindow(hwnd);
@@ -125,6 +126,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         default:
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
+        break;
+    case WM_PAINT:
+        RenderScene();
         break;
     case WM_DESTROY:
         DeleteObject(hBitmap);
@@ -135,55 +139,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
-void UpdateImage(HWND hwnd) {
-    if (!hBitmap) return;
-    BITMAP bm;
-    GetObject(hBitmap, sizeof(bm), &bm);
-    SIZE sizeSplash = { bm.bmWidth, bm.bmHeight };
-
-    // get the primary monitor's info
-    POINT ptZero = { 0 };
-    HMONITOR hmonPrimary = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
-    MONITORINFO monitorinfo = { 0 };
-    monitorinfo.cbSize = sizeof(monitorinfo);
-    GetMonitorInfo(hmonPrimary, &monitorinfo);
-
-    // Create the splash screen in the bottom right corner of the primary work area
-    const RECT& rcWork = monitorinfo.rcWork;
-    POINT ptOrigin;
-    ptOrigin.x = rcWork.right - sizeSplash.cx;
-    ptOrigin.y = rcWork.bottom - sizeSplash.cy;
-
-    // create a memory DC holding the splash bitmap
-    HDC hdcScreen = GetDC(NULL);
-    HDC hdcMem = CreateCompatibleDC(hdcScreen);
-    HBITMAP hbmpOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
-
-    // use the source image's alpha channel for blending
-    BLENDFUNCTION blend = { 0 };
-    blend.BlendOp = AC_SRC_OVER;
-    blend.SourceConstantAlpha = 255;
-    blend.AlphaFormat = AC_SRC_ALPHA;
-
-    // paint the window (in the right location) with the alpha-blended bitmap
-    UpdateLayeredWindow(hwnd, hdcScreen, &ptOrigin, &sizeSplash,
-        hdcMem, &ptZero, RGB(0, 0, 0), &blend, ULW_ALPHA);
-
-    // delete temporary objects
-    SelectObject(hdcMem, hbmpOld);
-    DeleteDC(hdcMem);
-    ReleaseDC(NULL, hdcScreen);
-}
-
-void LoadWaifu()
-{
-    Gdiplus::Bitmap bitmap(L"Shizuka.png");
-    bitmap.GetHBITMAP(NULL, &hBitmap);
-    waifuWidth = bitmap.GetWidth();
-    waifuHeight = bitmap.GetHeight();
-}
-
-void SelectOptions()
+void OpenOptions()
 {
     std::wstring imgPath = SearchImage();
     Gdiplus::Bitmap bitmap(imgPath.c_str());

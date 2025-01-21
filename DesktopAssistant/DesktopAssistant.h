@@ -7,6 +7,8 @@
 #include <shlobj_core.h>
 #include "resource.h"
 #include "gdiplus.h"
+#include "Handle3d.h"
+#include "Handle2d.h"
 
 
 #define MAX_LOADSTRING          100
@@ -18,8 +20,6 @@
 #define WAIFU_APP_NAME      L"My Waifu"
 
 // Main
-void UpdateImage(HWND hwnd);
-void LoadWaifu();
 void OpenOptions();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 std::wstring SearchImage();
