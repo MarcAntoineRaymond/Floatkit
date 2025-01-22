@@ -364,3 +364,6 @@ FodyWeavers.xsd
 /DesktopAssistant/include
 /DesktopAssistant/lib
 /DesktopAssistant/models
+/TestGlfw3/include
+/TestGlfw3/lib
+/TestGlfw3/models
