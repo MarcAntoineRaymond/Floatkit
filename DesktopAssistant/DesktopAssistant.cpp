@@ -22,26 +22,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     RegisterClassW(&wc);
 
     HWND hwnd = CreateWindowExW(
-        /*WS_EX_LAYERED |*/ WS_EX_TOPMOST /* | WS_EX_TOOLWINDOW*/,
+        WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         wc.lpszClassName, WAIFU_APP_NAME, WS_POPUP,
-        100, 100, 2000, 1000, NULL, NULL, hInstance, NULL);
+        100, 100, 500, 500, NULL, NULL, hInstance, NULL);
 
     if (!hwnd) return -1;
 
     nCmd = nCmdShow;
-    //UpdateImage(hwnd, hBitmap);
-    if (!InitOpenGL(hwnd)) {
-        return -1;
-    }
-
-    SetupMesh();
-    RenderScene();
+    UpdateImage(hwnd, hBitmap);
+    //InitOpenGL(hwnd);
     ShowWindow(hwnd, nCmd);
     InitNotifyIcon(hwnd, hInstance);
 
     MSG msg = {};
     while (GetMessageW(&msg, NULL, 0, 0)) {
-        RenderScene();
         TranslateMessage(&msg);
         DispatchMessageW(&msg);
     }
@@ -138,7 +132,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         break;
     case WM_DESTROY:
         DeleteObject(hBitmap);
-        DestroyScene();
         PostQuitMessage(0);
         DeleteNotifyIcon();
         return 0;
