@@ -20,7 +20,7 @@
 // Main
 void UpdateImage(HWND hwnd);
 void LoadWaifu();
-void OpenOptions();
+void SelectOptions();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 std::wstring SearchImage();
 
