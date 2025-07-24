@@ -1,5 +1,7 @@
 #include "DesktopAssistant.h"
 
+WCHAR mainImagePath[] = L"roxy.png";
+WCHAR draggingImagePath[] = L"assets/roxy_lean.png";
 HBITMAP hBitmap = NULL;
 int waifuWidth = 0;
 int waifuHeight = 0;
@@ -19,7 +21,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    LoadWaifu();
+    LoadWaifu(mainImagePath);
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -53,11 +55,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static POINT clickOffset;
     int wmId, wmEvent;
+    Gdiplus::Bitmap bitmap(draggingImagePath);
+    Gdiplus::Bitmap mbitmap(mainImagePath);
 
     switch (uMsg) {
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
         isDragging = true;
+        
+        bitmap.GetHBITMAP(NULL, &hBitmap); // Load the dragging image
+        UpdateImage(hwnd);
         clickOffset.x = LOWORD(lParam);
         clickOffset.y = HIWORD(lParam);
         return 0;
@@ -88,6 +95,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_LBUTTONUP:
         ReleaseCapture();
         isDragging = false;
+        mbitmap.GetHBITMAP(NULL, &hBitmap); // Load the dragging image
+        UpdateImage(hwnd);
         return 0;
     case WM_USER_SHELLICON:
         // systray msg callback 
@@ -204,9 +213,9 @@ void UpdateImage(HWND hwnd) {
    ReleaseDC(NULL, hdcScreen);
 }
 
-void LoadWaifu()
+void LoadWaifu(const wchar_t* imgPath)
 {
-    Gdiplus::Bitmap bitmap(L"Shizuka.png");
+    Gdiplus::Bitmap bitmap(mainImagePath);
     bitmap.GetHBITMAP(NULL, &hBitmap);
     waifuWidth = bitmap.GetWidth();
     waifuHeight = bitmap.GetHeight();
@@ -226,8 +235,7 @@ void LoadWaifu()
 void SelectOptions()
 {
     std::wstring imgPath = SearchImage();
-    Gdiplus::Bitmap bitmap(imgPath.c_str());
-    bitmap.GetHBITMAP(NULL, &hBitmap);
+	LoadWaifu(imgPath.c_str());
 }
 
 std::wstring SearchImage()
