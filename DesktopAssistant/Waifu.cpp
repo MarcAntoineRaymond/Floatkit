@@ -2,8 +2,12 @@
 #include "Waifu.h"
 
 Waifu::Waifu(const wchar_t* mainImagePath, const wchar_t* draggingImagePath)
-	: state(0), mainImage(mainImagePath), draggingImage(draggingImagePath), image(NULL), posX(0), posY(0)
+	: state(0), image(NULL), draggingImage(NULL), posX(0), posY(0)
 {
+    Gdiplus::Bitmap mainImage(mainImagePath);
+    mainImage.GetHBITMAP(NULL, &image);
+    Gdiplus::Bitmap dragImage(draggingImagePath);
+    dragImage.GetHBITMAP(NULL, &draggingImage);
     width = mainImage.GetWidth();
     height = mainImage.GetHeight();
     mainImage.GetHBITMAP(NULL, &image);
@@ -22,20 +26,6 @@ Waifu::Waifu(const wchar_t* mainImagePath, const wchar_t* draggingImagePath)
     posY = rcWork.bottom - width;
 }
 
-void Waifu::LoadWaifu() {
-    switch (state)
-    {
-    case 1:
-		// Dragging state
-        draggingImage.GetHBITMAP(NULL, &image);
-		break;
-    default:
-		// Normal state
-        mainImage.GetHBITMAP(NULL, &image);
-        break;
-    }
-}
-
 void Waifu::SetPosition(int x, int y) {
 	posX = x;
 	posY = y;
@@ -47,16 +37,24 @@ bool Waifu::IsDragging() const {
 
 void Waifu::StartDragging() {
 	state = 1; // Set state to dragging
-    LoadWaifu(); // Reload the main image
 }
 
 void Waifu::StopDragging() {
 	state = 0; // Set state to normal
-    LoadWaifu(); // Reload the main image
 }
 
 HBITMAP Waifu::GetImage() const {
-	return image;
+    switch (state)
+    {
+    case 1:
+        // Dragging state
+        return draggingImage;
+        break;
+    default:
+        // Normal state
+        return image;
+        break;
+    }
 }
 
 int Waifu::GetWidth() const {
@@ -79,4 +77,7 @@ Waifu::~Waifu() {
     if (image) {
         DeleteObject(image);
     }
+	if (draggingImage) {
+		DeleteObject(draggingImage);
+	}
 }
