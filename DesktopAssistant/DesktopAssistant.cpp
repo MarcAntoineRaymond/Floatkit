@@ -1,27 +1,25 @@
 #include "DesktopAssistant.h"
+#include "Waifu.h"
 
-WCHAR mainImagePath[] = L"roxy.png";
-WCHAR draggingImagePath[] = L"assets/roxy_lean.png";
-HBITMAP hBitmap = NULL;
-int waifuWidth = 0;
-int waifuHeight = 0;
+const wchar_t mainImagePath[] = L"roxy.png";
+const wchar_t draggingImagePath[] = L"roxylean.png";
+
+Waifu* waifu = nullptr;
+
 ULONG_PTR gdiplusToken;
 HMENU hPopMenu;
 BOOL bStopped = FALSE;
 HINSTANCE hInst;
 int nCmd;
 
-bool isDragging = false;
 POINT dragOffset = { 0, 0 };
-int pos_x = 0; // Current x position of the image
-int pos_y = 0; // Current y position of the image
-float g_scale = 1.0f; // Current image scale
+float g_scale = 1.0f;
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    LoadWaifu(mainImagePath);
+    waifu = new Waifu(mainImagePath, draggingImagePath);
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -47,7 +45,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         DispatchMessageW(&msg);
     }
 
-    DeleteObject(hBitmap);
     Gdiplus::GdiplusShutdown(gdiplusToken);
     return 0;
 }
@@ -55,31 +52,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     static POINT clickOffset;
     int wmId, wmEvent;
-    Gdiplus::Bitmap bitmap(draggingImagePath);
-    Gdiplus::Bitmap mbitmap(mainImagePath);
 
     switch (uMsg) {
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
-        isDragging = true;
-        
-        bitmap.GetHBITMAP(NULL, &hBitmap); // Load the dragging image
+        (*waifu).StartDragging();
+        InvalidateCursor();
         UpdateImage(hwnd);
         clickOffset.x = LOWORD(lParam);
         clickOffset.y = HIWORD(lParam);
         return 0;
 
     case WM_MOUSEMOVE:
-        if (isDragging) {
+        if ((*waifu).IsDragging()) {
             POINT pt;
             GetCursorPos(&pt);
-			pos_x = pt.x - clickOffset.x;
-			pos_y = pt.y - clickOffset.y;
+			int pos_x = pt.x - clickOffset.x;
+			int pos_y = pt.y - clickOffset.y;
+			(*waifu).SetPosition(pos_x, pos_y);
             SetWindowPos(hwnd, HWND_TOPMOST, pos_x, pos_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
         return 0;
     case WM_MOUSEWHEEL:
-        if (isDragging)
+        if ((*waifu).IsDragging())
         {
             short delta = GET_WHEEL_DELTA_WPARAM(wParam);
             float step = 0.1f;
@@ -94,8 +89,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
     case WM_LBUTTONUP:
         ReleaseCapture();
-        isDragging = false;
-        mbitmap.GetHBITMAP(NULL, &hBitmap); // Load the dragging image
+        (*waifu).StopDragging();
+        InvalidateCursor();
         UpdateImage(hwnd);
         return 0;
     case WM_USER_SHELLICON:
@@ -158,8 +153,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
         break;
+    case WM_SETCURSOR:
+        if (LOWORD(lParam) == HTCLIENT) // only override if mouse is in client area
+        {
+            if ((*waifu).IsDragging())
+                SetCursor(LoadCursor(NULL, IDC_SIZEALL)); // dragging cursor
+            else
+                SetCursor(LoadCursor(NULL, IDC_HAND));   // normal cursor
+
+            return TRUE;
+        }
+        break;
     case WM_DESTROY:
-        DeleteObject(hBitmap);
         PostQuitMessage(0);
         DeleteNotifyIcon();
         return 0;
@@ -167,75 +172,66 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return DefWindowProcW(hwnd, uMsg, wParam, lParam);
 }
 
-void UpdateImage(HWND hwnd) {
-   if (!hBitmap) return;
-   BITMAP bm;
-   GetObject(hBitmap, sizeof(bm), &bm);
-   SIZE sizeSplash = {
-       static_cast<LONG>(bm.bmWidth * g_scale),
-       static_cast<LONG>(bm.bmHeight * g_scale)
-   };
-   
-   POINT ptOrigin;
-   ptOrigin.x = pos_x;
-   ptOrigin.y = pos_y;
-
-   // create a memory DC holding the splash bitmap
-   HDC hdcScreen = GetDC(NULL);
-   HDC hdcMem = CreateCompatibleDC(hdcScreen);
-   HBITMAP hbmpOld = (HBITMAP)SelectObject(hdcMem, hBitmap);
-
-   // use the source image's alpha channel for blending
-   BLENDFUNCTION blend = { 0 };
-   blend.BlendOp = AC_SRC_OVER;
-   blend.SourceConstantAlpha = 255;
-   blend.AlphaFormat = AC_SRC_ALPHA;
-
-   // create a scaled bitmap
-   HDC hdcScaled = CreateCompatibleDC(hdcScreen);
-   HBITMAP hScaledBitmap = CreateCompatibleBitmap(hdcScreen, sizeSplash.cx, sizeSplash.cy);
-   HBITMAP hOldScaledBitmap = (HBITMAP)SelectObject(hdcScaled, hScaledBitmap);
-
-   SetStretchBltMode(hdcScaled, COLORONCOLOR);
-   StretchBlt(hdcScaled, 0, 0, sizeSplash.cx, sizeSplash.cy, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-
-   POINT ptZero = { 0 };
-   // paint the window (in the right location) with the alpha-blended bitmap
-   UpdateLayeredWindow(hwnd, hdcScreen, &ptOrigin, &sizeSplash,
-       hdcScaled, &ptZero, RGB(0, 0, 0), &blend, ULW_ALPHA);
-
-   // delete temporary objects  
-   SelectObject(hdcScaled, hOldScaledBitmap);
-   DeleteObject(hScaledBitmap);
-   DeleteDC(hdcScaled);
-   SelectObject(hdcMem, hbmpOld);
-   DeleteDC(hdcMem);
-   ReleaseDC(NULL, hdcScreen);
+void InvalidateCursor() {
+    // Force Windows to re-query the cursor by simulating WM_SETCURSOR
+    POINT pt;
+    GetCursorPos(&pt);
+    HWND hwndUnderCursor = WindowFromPoint(pt);
+    if (hwndUnderCursor)
+        SendMessage(hwndUnderCursor, WM_SETCURSOR, (WPARAM)hwndUnderCursor, HTCLIENT);
 }
 
-void LoadWaifu(const wchar_t* imgPath)
-{
-    Gdiplus::Bitmap bitmap(mainImagePath);
-    bitmap.GetHBITMAP(NULL, &hBitmap);
-    waifuWidth = bitmap.GetWidth();
-    waifuHeight = bitmap.GetHeight();
+void UpdateImage(HWND hwnd) {
+    HBITMAP hImage = (*waifu).GetImage();
+    if (!hImage) return;
+    BITMAP bm;
+    GetObject(hImage, sizeof(bm), &bm);
+    SIZE sizeSplash = {
+        static_cast<LONG>(bm.bmWidth * g_scale),
+        static_cast<LONG>(bm.bmHeight * g_scale)
+    };
+
+    POINT ptOrigin;
+    ptOrigin.x = (*waifu).GetPosX();
+    ptOrigin.y = (*waifu).GetPosY();
+
+    // create a memory DC holding the splash bitmap
+    HDC hdcScreen = GetDC(NULL);
+    HDC hdcMem = CreateCompatibleDC(hdcScreen);
+    HBITMAP hbmpOld = (HBITMAP)SelectObject(hdcMem, hImage);
+
+    // use the source image's alpha channel for blending
+    BLENDFUNCTION blend = { 0 };
+    blend.BlendOp = AC_SRC_OVER;
+    blend.SourceConstantAlpha = 255;
+    blend.AlphaFormat = AC_SRC_ALPHA;
+
+    // create a scaled bitmap
+    HDC hdcScaled = CreateCompatibleDC(hdcScreen);
+    HBITMAP hScaledBitmap = CreateCompatibleBitmap(hdcScreen, sizeSplash.cx, sizeSplash.cy);
+    HBITMAP hOldScaledBitmap = (HBITMAP)SelectObject(hdcScaled, hScaledBitmap);
+
+    SetStretchBltMode(hdcScaled, COLORONCOLOR);
+    StretchBlt(hdcScaled, 0, 0, sizeSplash.cx, sizeSplash.cy, hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
 
     POINT ptZero = { 0 };
-    HMONITOR hmonPrimary = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
-    MONITORINFO monitorinfo = { 0 };
-    monitorinfo.cbSize = sizeof(monitorinfo);
-    GetMonitorInfo(hmonPrimary, &monitorinfo);
+    // paint the window (in the right location) with the alpha-blended bitmap
+    UpdateLayeredWindow(hwnd, hdcScreen, &ptOrigin, &sizeSplash,
+        hdcScaled, &ptZero, RGB(0, 0, 0), &blend, ULW_ALPHA);
 
-    // Create the splash screen in the bottom right corner of the primary work area  
-    const RECT& rcWork = monitorinfo.rcWork;
-	pos_x = rcWork.right - waifuWidth;
-	pos_y = rcWork.bottom - waifuHeight;
+    // delete temporary objects  
+    SelectObject(hdcScaled, hOldScaledBitmap);
+    DeleteObject(hScaledBitmap);
+    DeleteDC(hdcScaled);
+    SelectObject(hdcMem, hbmpOld);
+    DeleteDC(hdcMem);
+    ReleaseDC(NULL, hdcScreen);
 }
 
 void SelectOptions()
 {
-    std::wstring imgPath = SearchImage();
-	LoadWaifu(imgPath.c_str());
+    std::wstring imgPathWstr = SearchImage();
+    waifu = new Waifu(imgPathWstr.c_str(), draggingImagePath);
 }
 
 std::wstring SearchImage()

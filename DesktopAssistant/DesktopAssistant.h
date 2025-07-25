@@ -18,11 +18,12 @@
 #define WAIFU_APP_NAME      L"My Waifu"
 
 // Main
-void UpdateImage(HWND hwnd);
-void LoadWaifu(const wchar_t* imgPath);
 void SelectOptions();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 std::wstring SearchImage();
+void UpdateImage(HWND hwnd);
+void InvalidateCursor();
+
 
 // NotifyIcon
 void InitNotifyIcon(HWND hWnd, HINSTANCE hInstance);
