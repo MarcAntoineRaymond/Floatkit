@@ -1,8 +1,9 @@
 #include "DesktopAssistant.h"
 #include "Waifu.h"
 
-const wchar_t mainImagePath[] = L"roxy.png";
-const wchar_t draggingImagePath[] = L"roxylean.png";
+//const wchar_t assetsPath[] = L"C:\\Users\\Marc-Antoine\\workspace\\cpp_projects\\desktop_waifus\\DesktopAssistant\\assets";
+const wchar_t assetsPath[] = L"assets";
+const wchar_t assetsName[] = L"roxy";
 
 Waifu* waifu = nullptr;
 
@@ -15,11 +16,17 @@ int nCmd;
 POINT dragOffset = { 0, 0 };
 float g_scale = 1.0f;
 
+int currentFrame = 0;
+int totalFrames = 2;
+int refeshTimer = 16; // 1/ms = ~60 FPS
+ULONGLONG lastFrameTime = GetTickCount64();
+const ULONGLONG frameDuration = 400; // 200 ms per frame = 2.5 FPS
+
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    waifu = new Waifu(mainImagePath, draggingImagePath);
+    waifu = new Waifu(assetsPath, assetsName);
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -38,6 +45,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     UpdateImage(hwnd);
     ShowWindow(hwnd, nCmd);
     InitNotifyIcon(hwnd, hInstance);
+    SetTimer(hwnd, 1, refeshTimer, NULL);
 
     MSG msg = {};
     while (GetMessageW(&msg, NULL, 0, 0)) {
@@ -58,7 +66,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         SetCapture(hwnd);
         (*waifu).StartDragging();
         InvalidateCursor();
-        UpdateImage(hwnd);
         clickOffset.x = LOWORD(lParam);
         clickOffset.y = HIWORD(lParam);
         return 0;
@@ -83,7 +90,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             if (newScale > 10.0f) newScale = 10.0f;
             if (newScale != g_scale) {
                 g_scale = newScale;
-                UpdateImage(hwnd); // now truly zooms the image
             }
         }
         return 0;
@@ -91,7 +97,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         ReleaseCapture();
         (*waifu).StopDragging();
         InvalidateCursor();
-        UpdateImage(hwnd);
         return 0;
     case WM_USER_SHELLICON:
         // systray msg callback 
@@ -144,7 +149,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             break;
         case ID_MENU_OPTIONS:
             SelectOptions();
-            UpdateImage(hwnd);
             break;
         case ID_MENU_EXIT:
             DestroyWindow(hwnd);
@@ -164,6 +168,11 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return TRUE;
         }
         break;
+	case WM_TIMER:
+		if (wParam == 1) {
+		    UpdateImage(hwnd);
+		}
+		return 0;
     case WM_DESTROY:
         PostQuitMessage(0);
         DeleteNotifyIcon();
@@ -182,7 +191,13 @@ void InvalidateCursor() {
 }
 
 void UpdateImage(HWND hwnd) {
-    HBITMAP hImage = (*waifu).GetImage();
+    ULONGLONG now = GetTickCount64();
+    if (now - lastFrameTime >= frameDuration) {
+        currentFrame = (currentFrame + 1) % totalFrames;
+        lastFrameTime = now;
+    }
+
+    HBITMAP hImage = (*waifu).GetImage(currentFrame);
     if (!hImage) return;
     BITMAP bm;
     GetObject(hImage, sizeof(bm), &bm);
@@ -231,7 +246,7 @@ void UpdateImage(HWND hwnd) {
 void SelectOptions()
 {
     std::wstring imgPathWstr = SearchImage();
-    waifu = new Waifu(imgPathWstr.c_str(), draggingImagePath);
+    waifu = new Waifu(imgPathWstr.c_str(), L"roxy");
 }
 
 std::wstring SearchImage()

@@ -1,19 +1,19 @@
 #include "DesktopAssistant.h"
 #include "Waifu.h"
 
-Waifu::Waifu(const wchar_t* mainImagePath, const wchar_t* draggingImagePath)
-	: state(0), image(NULL), draggingImage(NULL), posX(0), posY(0)
+Waifu::Waifu(const std::wstring folder, const std::wstring filePattern)
+	: state(0), posX(0), posY(0), vecBImages(), vecBDraggingImages()
 {
-    Gdiplus::Bitmap mainImage(mainImagePath);
-    mainImage.GetHBITMAP(NULL, &image);
-    Gdiplus::Bitmap dragImage(draggingImagePath);
-    dragImage.GetHBITMAP(NULL, &draggingImage);
-    width = mainImage.GetWidth();
-    height = mainImage.GetHeight();
-    mainImage.GetHBITMAP(NULL, &image);
-    if (image == NULL) {
-        std::wcerr << L"Failed to load main image" << std::endl;
-    }
+    vecBImages = LoadVecBitmaps(2, folder, filePattern);
+	vecBDraggingImages = LoadVecBitmaps(2, folder, filePattern + L"_lean");
+    
+    HBITMAP hbm = vecBImages[0];
+    BITMAP bm;
+    CHAR szBuffer[255];
+    GetObject(hbm, sizeof(BITMAP), &bm);
+    width = bm.bmWidth;
+    height = bm.bmHeight;
+
     POINT ptZero = { 0 };
     HMONITOR hmonPrimary = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
     MONITORINFO monitorinfo = { 0 };
@@ -43,16 +43,16 @@ void Waifu::StopDragging() {
 	state = 0; // Set state to normal
 }
 
-HBITMAP Waifu::GetImage() const {
+HBITMAP Waifu::GetImage(int index) const {
     switch (state)
     {
     case 1:
         // Dragging state
-        return draggingImage;
+        return vecBDraggingImages[index];
         break;
     default:
         // Normal state
-        return image;
+        return vecBImages[index];
         break;
     }
 }
@@ -74,10 +74,32 @@ int Waifu::GetPosY() const {
 }
 
 Waifu::~Waifu() {
-    if (image) {
-        DeleteObject(image);
+    for (HBITMAP bmp : vecBImages)
+        if (bmp) DeleteObject(bmp);
+    for (HBITMAP bmp : vecBDraggingImages)
+        if (bmp) DeleteObject(bmp);
+}
+
+std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::wstring& folder, const std::wstring& filePattern)
+{
+    std::vector<HBITMAP> bitmaps;
+    for (int i = 0; i < frameCount; ++i)
+    {
+        std::wstringstream path;
+        path << folder << L"\\" << filePattern << "_" << i << L".png";
+
+        Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromFile(path.str().c_str());
+        if (!bitmap || bitmap->GetLastStatus() != Gdiplus::Ok) {
+            delete bitmap;
+            bitmaps.push_back(nullptr);
+            continue;
+        }
+
+        HBITMAP hbm = nullptr;
+        bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0), &hbm);
+        bitmaps.push_back(hbm);
+        delete bitmap;
     }
-	if (draggingImage) {
-		DeleteObject(draggingImage);
-	}
+
+    return bitmaps;
 }
