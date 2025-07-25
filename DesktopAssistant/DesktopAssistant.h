@@ -21,9 +21,8 @@
 void SelectOptions();
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 std::wstring SearchImage();
-
-// Image
 void UpdateImage(HWND hwnd);
+void InvalidateCursor();
 
 
 // NotifyIcon

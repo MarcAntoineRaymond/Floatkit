@@ -57,6 +57,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
         (*waifu).StartDragging();
+        InvalidateCursor();
         UpdateImage(hwnd);
         clickOffset.x = LOWORD(lParam);
         clickOffset.y = HIWORD(lParam);
@@ -89,6 +90,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_LBUTTONUP:
         ReleaseCapture();
         (*waifu).StopDragging();
+        InvalidateCursor();
         UpdateImage(hwnd);
         return 0;
     case WM_USER_SHELLICON:
@@ -151,12 +153,32 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             return DefWindowProc(hwnd, uMsg, wParam, lParam);
         }
         break;
+    case WM_SETCURSOR:
+        if (LOWORD(lParam) == HTCLIENT) // only override if mouse is in client area
+        {
+            if ((*waifu).IsDragging())
+                SetCursor(LoadCursor(NULL, IDC_SIZEALL)); // dragging cursor
+            else
+                SetCursor(LoadCursor(NULL, IDC_HAND));   // normal cursor
+
+            return TRUE;
+        }
+        break;
     case WM_DESTROY:
         PostQuitMessage(0);
         DeleteNotifyIcon();
         return 0;
     }
     return DefWindowProcW(hwnd, uMsg, wParam, lParam);
+}
+
+void InvalidateCursor() {
+    // Force Windows to re-query the cursor by simulating WM_SETCURSOR
+    POINT pt;
+    GetCursorPos(&pt);
+    HWND hwndUnderCursor = WindowFromPoint(pt);
+    if (hwndUnderCursor)
+        SendMessage(hwndUnderCursor, WM_SETCURSOR, (WPARAM)hwndUnderCursor, HTCLIENT);
 }
 
 void UpdateImage(HWND hwnd) {
