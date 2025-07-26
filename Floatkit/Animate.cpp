@@ -1,7 +1,7 @@
-#include "DesktopAssistant.h"
-#include "Waifu.h"
+#include "Floatkit.h"
+#include "Animate.h"
 
-Waifu::Waifu(const std::wstring cfgPath)
+Animate::Animate(const std::wstring cfgPath)
 	: state(0), posX(0), posY(0), width(0), height(0),
 	idleCount(0), draggingCount(0), clickingCount(0),
     idleFilePattern(L"idle"), draggingFilePattern(L"dragging"), clickingFilePattern(L"click"),
@@ -29,24 +29,24 @@ Waifu::Waifu(const std::wstring cfgPath)
     posY = rcWork.bottom - width;
 }
 
-void Waifu::SetPosition(int x, int y) {
+void Animate::SetPosition(int x, int y) {
 	posX = x;
 	posY = y;
 }
 
-bool Waifu::IsDragging() const {
+bool Animate::IsDragging() const {
 	return state == 1;
 }
 
-void Waifu::StartDragging() {
+void Animate::StartDragging() {
 	state = 1; // Set state to dragging
 }
 
-void Waifu::StopDragging() {
+void Animate::StopDragging() {
 	state = 0; // Set state to normal
 }
 
-int Waifu::GetStateCount() const {
+int Animate::GetStateCount() const {
     switch (state)
     {
     case 1:
@@ -64,7 +64,7 @@ int Waifu::GetStateCount() const {
     }
 }
 
-float Waifu::GetStateFps() const {
+float Animate::GetStateFps() const {
     switch (state)
     {
     case 1:
@@ -82,7 +82,7 @@ float Waifu::GetStateFps() const {
     }
 }
 
-HBITMAP Waifu::GetImage(int index) const {
+HBITMAP Animate::GetImage(int index) const {
     switch (state)
     {
     case 1:
@@ -100,7 +100,7 @@ HBITMAP Waifu::GetImage(int index) const {
     }
 }
 
-Waifu::~Waifu() {
+Animate::~Animate() {
     for (HBITMAP bmp : idleImages)
         if (bmp) DeleteObject(bmp);
     for (HBITMAP bmp : draggingImages)
@@ -155,7 +155,7 @@ std::wstring utf8_to_wstring(const std::string& utf8) {
     return result;
 }
 
-void Waifu::LoadConfig(const std::wstring& configpath) {
+void Animate::LoadConfig(const std::wstring& configpath) {
     std::ifstream file(configpath);
 
     if (!file.is_open()) {

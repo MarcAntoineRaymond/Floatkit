@@ -1,9 +1,9 @@
-#include "DesktopAssistant.h"
-#include "Waifu.h"
+#include "Floatkit.h"
+#include "Animate.h"
 
 std::wstring defaultConfig = L"assets/roxy.cfg";
 
-Waifu* waifu = nullptr;
+Animate* animateO = nullptr;
 
 ULONG_PTR gdiplusToken;
 HMENU hPopMenu;
@@ -21,17 +21,17 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    waifu = new Waifu(defaultConfig);
+    animateO = new Animate(defaultConfig);
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
     wc.hInstance = hInstance;
-    wc.lpszClassName = WAIFU_CLASS_NAME;
+    wc.lpszClassName = FLOATKIT_CLASS_NAME;
     RegisterClassW(&wc);
 
     HWND hwnd = CreateWindowExW(
         WS_EX_LAYERED | WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        wc.lpszClassName, WAIFU_APP_NAME, WS_POPUP,
+        wc.lpszClassName, FLOATKIT_APP_NAME, WS_POPUP,
         100, 100, 500, 500, NULL, NULL, hInstance, NULL);
 
     if (!hwnd) return -1;
@@ -59,29 +59,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     switch (uMsg) {
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
-        (*waifu).StartDragging();
+        (*animateO).StartDragging();
         InvalidateCursor();
         clickOffset.x = LOWORD(lParam);
         clickOffset.y = HIWORD(lParam);
         return 0;
 
     case WM_MOUSEMOVE:
-        if ((*waifu).IsDragging()) {
+        if ((*animateO).IsDragging()) {
             POINT pt;
             GetCursorPos(&pt);
 			int pos_x = pt.x - clickOffset.x;
 			int pos_y = pt.y - clickOffset.y;
-			(*waifu).SetPosition(pos_x, pos_y);
+			(*animateO).SetPosition(pos_x, pos_y);
             SetWindowPos(hwnd, HWND_TOPMOST, pos_x, pos_y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
         }
         return 0;
     case WM_MOUSEWHEEL:
-        if ((*waifu).IsDragging())
+        if ((*animateO).IsDragging())
         {
             short delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            float newScale = g_scale + (delta > 0 ? waifu->GetScaleStep() : -waifu->GetScaleStep());
-            if (newScale < waifu->GetScaleMin()) newScale = waifu->GetScaleMin();
-            if (newScale > waifu->GetScaleMax()) newScale = waifu->GetScaleMax();
+            float newScale = g_scale + (delta > 0 ? animateO->GetScaleStep() : -animateO->GetScaleStep());
+            if (newScale < animateO->GetScaleMin()) newScale = animateO->GetScaleMin();
+            if (newScale > animateO->GetScaleMax()) newScale = animateO->GetScaleMax();
             if (newScale != g_scale) {
                 g_scale = newScale;
             }
@@ -89,7 +89,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
     case WM_LBUTTONUP:
         ReleaseCapture();
-        (*waifu).StopDragging();
+        (*animateO).StopDragging();
         InvalidateCursor();
         return 0;
     case WM_USER_SHELLICON:
@@ -154,7 +154,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     case WM_SETCURSOR:
         if (LOWORD(lParam) == HTCLIENT) // only override if mouse is in client area
         {
-            if ((*waifu).IsDragging())
+            if ((*animateO).IsDragging())
                 SetCursor(LoadCursor(NULL, IDC_SIZEALL)); // dragging cursor
             else
                 SetCursor(LoadCursor(NULL, IDC_HAND));   // normal cursor
@@ -186,12 +186,12 @@ void InvalidateCursor() {
 
 void UpdateImage(HWND hwnd) {
     ULONGLONG now = GetTickCount64();
-    if (now - lastFrameTime >= 1000.0f / waifu->GetStateFps()) {
-        currentFrame = (currentFrame + 1) % waifu->GetStateCount();
+    if (now - lastFrameTime >= 1000.0f / animateO->GetStateFps()) {
+        currentFrame = (currentFrame + 1) % animateO->GetStateCount();
         lastFrameTime = now;
     }
 
-    HBITMAP hImage = (*waifu).GetImage(currentFrame);
+    HBITMAP hImage = (*animateO).GetImage(currentFrame);
     if (!hImage) return;
     BITMAP bm;
     GetObject(hImage, sizeof(bm), &bm);
@@ -201,8 +201,8 @@ void UpdateImage(HWND hwnd) {
     };
 
     POINT ptOrigin;
-    ptOrigin.x = (*waifu).GetPosX();
-    ptOrigin.y = (*waifu).GetPosY();
+    ptOrigin.x = (*animateO).GetPosX();
+    ptOrigin.y = (*animateO).GetPosY();
 
     // create a memory DC holding the splash bitmap
     HDC hdcScreen = GetDC(NULL);
@@ -240,7 +240,7 @@ void UpdateImage(HWND hwnd) {
 void SelectOptions()
 {
     std::wstring cfgPathWstr = SearchConfig();
-	waifu = new Waifu(cfgPathWstr);
+	animateO = new Animate(cfgPathWstr);
 }
 
 std::wstring SearchConfig()

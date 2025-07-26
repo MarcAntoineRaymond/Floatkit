@@ -1,10 +1,10 @@
-#include "DesktopAssistant.h"
+#include "Floatkit.h"
 
 NOTIFYICONDATA nidApp;
 
 void InitNotifyIcon(HWND hWnd, HINSTANCE hInstance)
 {
-    HICON hIcon = (HICON)LoadIcon(hInstance, MAKEINTRESOURCE(IDI_DESKTOPASSISTANT));
+    HICON hIcon = (HICON)LoadIcon(hInstance, MAKEINTRESOURCE(IDI_FLOATKIT));
     nidApp.cbSize = sizeof(NOTIFYICONDATA);
     nidApp.hWnd = (HWND)hWnd;
     nidApp.uID = IDI_NOTIFY;

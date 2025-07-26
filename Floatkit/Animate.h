@@ -9,7 +9,7 @@
 
 std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::wstring& folder, const std::wstring& filePattern);
 
-class Waifu {
+class Animate {
 private:
    int width;
    int height;
@@ -32,8 +32,8 @@ private:
    float scaleMax;
    float scaleStep;
 public:
-   Waifu(const std::wstring cfgPath);
-   ~Waifu();
+	Animate(const std::wstring cfgPath);
+   ~Animate();
 
    // Logic
    void LoadConfig(const std::wstring& configPath);
