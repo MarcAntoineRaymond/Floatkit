@@ -3,6 +3,7 @@
 #define _WIN32_WINNT 0x0A00 // _WIN32_WINNT_WIN10, the _WIN32_WINNT macro must also be defined when defining NTDDI_VERSION
 #include <windows.h>
 #include <iostream>
+#include <sstream>
 #include <shobjidl.h>
 #include <shlobj_core.h>
 #include "resource.h"
@@ -18,12 +19,14 @@
 #define WAIFU_APP_NAME      L"My Waifu"
 
 // Main
-void SelectOptions();
+// Window
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-std::wstring SearchImage();
 void UpdateImage(HWND hwnd);
 void InvalidateCursor();
 
+// Config
+std::wstring SearchConfig();
+void SelectOptions();
 
 // NotifyIcon
 void InitNotifyIcon(HWND hWnd, HINSTANCE hInstance);
