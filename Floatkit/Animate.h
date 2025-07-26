@@ -31,6 +31,7 @@ private:
    float scaleMin;
    float scaleMax;
    float scaleStep;
+   int currentFrame;
 public:
 	Animate(const std::wstring cfgPath);
    ~Animate();
@@ -38,12 +39,17 @@ public:
    // Logic
    void LoadConfig(const std::wstring& configPath);
    void SetPosition(int x, int y);
-   void StartDragging();
    void StopDragging();
-   bool IsDragging() const;
-   HBITMAP GetImage(int index) const;
+   void StopClicking();
+   void StartDragging();
+   void StartClicking();
+   bool IsDragging() const { return state == 1; }
+   bool IsClicking() const { return state == 2; }
+   HBITMAP GetImage(int index);
    int GetStateCount() const;
    float GetStateFps() const;
+
+   void SetCurrentFrame(int frame) { currentFrame = frame; }
 
    // Getters
    int GetWidth() const { return width; }
@@ -56,4 +62,5 @@ public:
    float GetScaleMin() const { return scaleMin; }
    float GetScaleMax() const { return scaleMax; }
    float GetScaleStep() const { return scaleStep; }
+   int GetCurrentFrame() const { return currentFrame; }
 };

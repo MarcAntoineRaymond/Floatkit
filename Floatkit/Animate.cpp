@@ -5,7 +5,7 @@ Animate::Animate(const std::wstring cfgPath)
 	: state(0), posX(0), posY(0), width(0), height(0),
 	idleCount(0), draggingCount(0), clickingCount(0),
     idleFilePattern(L"idle"), draggingFilePattern(L"dragging"), clickingFilePattern(L"click"),
-    idleFps(2.5f), draggingFps(2.5f), clickingFps(2.5f),
+	idleFps(2.5f), draggingFps(2.5f), clickingFps(2.5f), currentFrame(0),
     scaleMin(0.1f), scaleMax(10.0f), scaleStep(0.1f),
     idleImages(), draggingImages(), clickingImages()
 {
@@ -16,17 +16,6 @@ Animate::Animate(const std::wstring cfgPath)
     GetObject(hbm, sizeof(BITMAP), &bm);
     width = bm.bmWidth;
     height = bm.bmHeight;
-
-    POINT ptZero = { 0 };
-    HMONITOR hmonPrimary = MonitorFromPoint(ptZero, MONITOR_DEFAULTTOPRIMARY);
-    MONITORINFO monitorinfo = { 0 };
-    monitorinfo.cbSize = sizeof(monitorinfo);
-    GetMonitorInfo(hmonPrimary, &monitorinfo);
-
-    // Create the splash screen in the bottom right corner of the primary work area  
-    const RECT& rcWork = monitorinfo.rcWork;
-    posX = rcWork.right - width;
-    posY = rcWork.bottom - width;
 }
 
 void Animate::SetPosition(int x, int y) {
@@ -34,16 +23,29 @@ void Animate::SetPosition(int x, int y) {
 	posY = y;
 }
 
-bool Animate::IsDragging() const {
-	return state == 1;
-}
 
 void Animate::StartDragging() {
-	state = 1; // Set state to dragging
+    if (!draggingImages.empty())
+        state = 1;
 }
 
 void Animate::StopDragging() {
-	state = 0; // Set state to normal
+	if (state == 1)
+		// If we were dragging, reset to idle state
+		state = 0;
+}
+
+void Animate::StartClicking() {
+    if (!clickingImages.empty()) {
+        state = 2;
+		currentFrame = 0; // Reset frame to the first one when starting clicking
+    }
+}
+
+void Animate::StopClicking() {
+    if (state == 2)
+        // If we were clicking, reset to idle state
+        state = 0;
 }
 
 int Animate::GetStateCount() const {
@@ -82,19 +84,28 @@ float Animate::GetStateFps() const {
     }
 }
 
-HBITMAP Animate::GetImage(int index) const {
+HBITMAP Animate::GetImage(int index) {
     switch (state)
     {
     case 1:
         // Dragging state
+		if (index < 0 || index >= draggingImages.size())
+			index = 0;
         return draggingImages[index];
         break;
 	case 2:
 		// Clicking state
+		if (index < 0 || index >= clickingImages.size())
+			index = 0;
+        if (index == clickingImages.size() - 1)
+			// If we are at the last frame of clicking, reset to idle state
+			StopClicking();
 		return clickingImages[index];
 		break;
     default:
         // Normal state
+		if (index < 0 || index >= idleImages.size())
+			index = 0;
         return idleImages[index];
         break;
     }
@@ -208,8 +219,8 @@ void Animate::LoadConfig(const std::wstring& configpath) {
     if (config.count(L"click_count")) {
         clickingCount = std::stoi(config[L"click_count"]);
     }
-	if (config.count(L"clicking_fps")) {
-		clickingFps = std::stof(config[L"clicking_fps"]);
+	if (config.count(L"click_fps")) {
+		clickingFps = std::stof(config[L"click_fps"]);
 	}
     if (config.count(L"scale_min")) {
         scaleMin = std::stof(config[L"scale_min"]);

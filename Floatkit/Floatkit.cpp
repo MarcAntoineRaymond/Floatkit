@@ -1,7 +1,7 @@
 #include "Floatkit.h"
 #include "Animate.h"
 
-std::wstring defaultConfig = L"assets/roxy.cfg";
+std::wstring defaultConfig = L"assets/cat/cat.cfg";
 
 Animate* animateO = nullptr;
 
@@ -12,7 +12,7 @@ HINSTANCE hInst;
 int nCmd;
 
 POINT dragOffset = { 0, 0 };
-int currentFrame = 0;
+bool hasClicked = false;
 float g_scale = 1.0f;
 ULONGLONG lastFrameTime = GetTickCount64();
 float fps = 60.0f; // 60 FPS ~ 1/60 * 1000 ms per frame
@@ -59,14 +59,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     switch (uMsg) {
     case WM_LBUTTONDOWN:
         SetCapture(hwnd);
-        (*animateO).StartDragging();
-        InvalidateCursor();
+        hasClicked = true;
         clickOffset.x = LOWORD(lParam);
         clickOffset.y = HIWORD(lParam);
         return 0;
 
     case WM_MOUSEMOVE:
-        if ((*animateO).IsDragging()) {
+        if (hasClicked || (*animateO).IsDragging()) {
+            InvalidateCursor();
+			// Start dragging
+			(*animateO).StartDragging();
             POINT pt;
             GetCursorPos(&pt);
 			int pos_x = pt.x - clickOffset.x;
@@ -80,8 +82,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         {
             short delta = GET_WHEEL_DELTA_WPARAM(wParam);
             float newScale = g_scale + (delta > 0 ? animateO->GetScaleStep() : -animateO->GetScaleStep());
-            if (newScale < animateO->GetScaleMin()) newScale = animateO->GetScaleMin();
-            if (newScale > animateO->GetScaleMax()) newScale = animateO->GetScaleMax();
             if (newScale != g_scale) {
                 g_scale = newScale;
             }
@@ -89,13 +89,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         return 0;
     case WM_LBUTTONUP:
         ReleaseCapture();
+        if (hasClicked && !(*animateO).IsDragging())
+            (*animateO).StartClicking();
         (*animateO).StopDragging();
+		hasClicked = false;
         InvalidateCursor();
         return 0;
     case WM_USER_SHELLICON:
         // systray msg callback 
         switch (LOWORD(lParam))
         {
+		case WM_LBUTTONDOWN:
         case WM_RBUTTONDOWN:
             UINT uFlag = MF_BYPOSITION | MF_STRING;
             GetCursorPos(&clickOffset);
@@ -187,12 +191,16 @@ void InvalidateCursor() {
 void UpdateImage(HWND hwnd) {
     ULONGLONG now = GetTickCount64();
     if (now - lastFrameTime >= 1000.0f / animateO->GetStateFps()) {
-        currentFrame = (currentFrame + 1) % animateO->GetStateCount();
+        animateO->SetCurrentFrame((animateO->GetCurrentFrame() + 1) % animateO->GetStateCount());
         lastFrameTime = now;
     }
-
-    HBITMAP hImage = (*animateO).GetImage(currentFrame);
+    HBITMAP hImage = (*animateO).GetImage(animateO->GetCurrentFrame());
     if (!hImage) return;
+
+    // Ensure scale if between bounds
+    if (g_scale < animateO->GetScaleMin()) g_scale = animateO->GetScaleMin();
+    if (g_scale > animateO->GetScaleMax()) g_scale = animateO->GetScaleMax();
+
     BITMAP bm;
     GetObject(hImage, sizeof(bm), &bm);
     SIZE sizeSplash = {
@@ -240,6 +248,7 @@ void UpdateImage(HWND hwnd) {
 void SelectOptions()
 {
     std::wstring cfgPathWstr = SearchConfig();
+	animateO->~Animate(); // Clean up previous instance
 	animateO = new Animate(cfgPathWstr);
 }
 
