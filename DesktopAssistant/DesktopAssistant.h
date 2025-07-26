@@ -3,12 +3,7 @@
 #define _WIN32_WINNT 0x0A00 // _WIN32_WINNT_WIN10, the _WIN32_WINNT macro must also be defined when defining NTDDI_VERSION
 #include <windows.h>
 #include <iostream>
-#include <unordered_map>
-#include <cwctype>
-#include <fstream>
 #include <sstream>
-#include <algorithm>
-#include <filesystem>
 #include <shobjidl.h>
 #include <shlobj_core.h>
 #include "resource.h"
@@ -32,7 +27,6 @@ void InvalidateCursor();
 // Config
 std::wstring SearchConfig();
 void SelectOptions();
-void LoadConfig(std::wstring configpath);
 
 // NotifyIcon
 void InitNotifyIcon(HWND hWnd, HINSTANCE hInstance);

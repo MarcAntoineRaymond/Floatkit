@@ -1,6 +1,8 @@
 #include "DesktopAssistant.h"
 #include "Waifu.h"
 
+std::wstring defaultConfig = L"assets/roxy.cfg";
+
 Waifu* waifu = nullptr;
 
 ULONG_PTR gdiplusToken;
@@ -10,30 +12,16 @@ HINSTANCE hInst;
 int nCmd;
 
 POINT dragOffset = { 0, 0 };
-float g_scale = 1.0f;
 int currentFrame = 0;
-
+float g_scale = 1.0f;
 ULONGLONG lastFrameTime = GetTickCount64();
-
-
-//config
-std::wstring idle = L"roxy";
-int idle_count = 2;
-std::wstring dragging = L"dragging";
-int dragging_count = 0;
-std::wstring click = L"click";
-int click_count = 0;
 float fps = 60.0f; // 60 FPS ~ 1/60 * 1000 ms per frame
-float animation_fps = 2.5f; // 2.5 FPS ~ 1/2.5 * 1000 ms per frame
-float scale_min = 0.1f;
-float scale_max = 10.0f;
-float scale_step = 0.1f;
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    waifu = new Waifu(L"assets", idle);
+    waifu = new Waifu(defaultConfig);
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -91,9 +79,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         if ((*waifu).IsDragging())
         {
             short delta = GET_WHEEL_DELTA_WPARAM(wParam);
-            float newScale = g_scale + (delta > 0 ? scale_step : -scale_step);
-            if (newScale < scale_min) newScale = scale_min;
-            if (newScale > scale_max) newScale = scale_max;
+            float newScale = g_scale + (delta > 0 ? waifu->GetScaleStep() : -waifu->GetScaleStep());
+            if (newScale < waifu->GetScaleMin()) newScale = waifu->GetScaleMin();
+            if (newScale > waifu->GetScaleMax()) newScale = waifu->GetScaleMax();
             if (newScale != g_scale) {
                 g_scale = newScale;
             }
@@ -198,8 +186,8 @@ void InvalidateCursor() {
 
 void UpdateImage(HWND hwnd) {
     ULONGLONG now = GetTickCount64();
-    if (now - lastFrameTime >= 1000/animation_fps) {
-        currentFrame = (currentFrame + 1) % idle_count;
+    if (now - lastFrameTime >= 1000.0f / waifu->GetStateFps()) {
+        currentFrame = (currentFrame + 1) % waifu->GetStateCount();
         lastFrameTime = now;
     }
 
@@ -252,8 +240,7 @@ void UpdateImage(HWND hwnd) {
 void SelectOptions()
 {
     std::wstring cfgPathWstr = SearchConfig();
-	LoadConfig(cfgPathWstr);
-    waifu = new Waifu(std::filesystem::path(cfgPathWstr).parent_path().wstring(), idle);
+	waifu = new Waifu(cfgPathWstr);
 }
 
 std::wstring SearchConfig()
@@ -325,86 +312,4 @@ std::wstring SearchConfig()
     CoUninitialize();
 
     return filePath;
-}
-
-// Trim whitespace from wstring
-static inline void trim(std::wstring& s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](wchar_t ch) {
-        return !std::iswspace(ch);
-        }));
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](wchar_t ch) {
-        return !std::iswspace(ch);
-        }).base(), s.end());
-}
-
-// Convert UTF-8 to std::wstring using Windows API
-std::wstring utf8_to_wstring(const std::string& utf8) {
-    if (utf8.empty()) return L"";
-
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, nullptr, 0);
-    if (size_needed == 0) return L"";
-
-    std::wstring result(size_needed - 1, 0); // -1 to exclude null terminator
-    MultiByteToWideChar(CP_UTF8, 0, utf8.c_str(), -1, &result[0], size_needed);
-    return result;
-}
-
-void LoadConfig(std::wstring configpath) {
-    std::ifstream file(configpath);
-
-    if (!file.is_open()) {
-        std::wcerr << L"Could not open config.txt" << std::endl;
-    }
-
-    std::unordered_map<std::wstring, std::wstring> config;
-    std::string line;
-
-    while (std::getline(file, line)) {
-        auto wline = utf8_to_wstring(line);
-
-        size_t pos = wline.find(L'=');
-        if (pos == std::wstring::npos) continue;
-
-        std::wstring key = wline.substr(0, pos);
-        std::wstring value = wline.substr(pos + 1);
-
-        trim(key);
-        trim(value);
-
-        if (!key.empty()) {
-            config[key] = value;
-        }
-    }
-
-    // Set variables from config map
-    if (config.count(L"idle")) {
-        idle = config[L"idle"];
-    }
-    if (config.count(L"idle_count")) {
-        idle_count = std::stoi(config[L"idle_count"]);
-    }
-    if (config.count(L"dragging")) {
-        dragging = config[L"dragging"];
-    }
-    if (config.count(L"dragging_count")) {
-        dragging_count = std::stoi(config[L"dragging_count"]);
-    }
-    if (config.count(L"click")) {
-        click = config[L"click"];
-    }
-    if (config.count(L"click_count")) {
-        click_count = std::stoi(config[L"click_count"]);
-    }
-    if (config.count(L"animation_fps")) {
-        animation_fps = std::stof(config[L"animation_fps"]);
-    }
-    if (config.count(L"scale_min")) {
-        scale_min = std::stof(config[L"scale_min"]);
-    }
-    if (config.count(L"scale_max")) {
-        scale_max = std::stof(config[L"scale_max"]);
-    }
-    if (config.count(L"scale_step")) {
-        scale_step = std::stof(config[L"scale_step"]);
-    }
 }
