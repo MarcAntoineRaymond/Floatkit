@@ -25,7 +25,7 @@ void InvalidateCursor();
 
 // Config
 std::wstring SearchConfig();
-void SelectOptions();
+void SelectOptions(HWND hWnd);
 
 // NotifyIcon
 void InitNotifyIcon(HWND hWnd, HINSTANCE hInstance);

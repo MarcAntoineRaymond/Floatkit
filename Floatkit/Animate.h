@@ -32,6 +32,7 @@ private:
    float scaleMax;
    float scaleStep;
    int currentFrame;
+   std::wstring lastError;
 public:
 	Animate(const std::wstring cfgPath);
 	Animate(HBITMAP hbm);
@@ -51,6 +52,8 @@ public:
    HBITMAP GetImage(int index);
    int GetStateCount() const;
    float GetStateFps() const;
+   void ClearLastError();
+   void AddToLastError(const std::wstring& error);
 
    void SetCurrentFrame(int frame) { currentFrame = frame; }
 
@@ -66,4 +69,5 @@ public:
    float GetScaleMax() const { return scaleMax; }
    float GetScaleStep() const { return scaleStep; }
    int GetCurrentFrame() const { return currentFrame; }
+   std::wstring GetLastError() const { return lastError; }
 };

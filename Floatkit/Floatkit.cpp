@@ -22,6 +22,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
     animateO = new Animate(defaultConfig);
+	if (!animateO->GetLastError().empty()) {
+		MessageBox(NULL, animateO->GetLastError().c_str(), L"Error", MB_OK | MB_ICONERROR);
+		delete animateO;
+		return -1;
+	}
 
     WNDCLASSW wc = {};
     wc.lpfnWndProc = WindowProc;
@@ -146,7 +151,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             ShowWindow(hwnd, nCmd);
             break;
         case ID_MENU_OPTIONS:
-            SelectOptions();
+            SelectOptions(hwnd);
             break;
         case ID_MENU_EXIT:
             DestroyWindow(hwnd);
@@ -245,24 +250,43 @@ void UpdateImage(HWND hwnd) {
     ReleaseDC(NULL, hdcScreen);
 }
 
-void SelectOptions()
+void SelectOptions(HWND hwnd)
 {
     std::wstring filePathWstr = SearchConfig();
-	animateO->~Animate(); // Clean up previous instance
     std::filesystem::path path(filePathWstr);
-    if (path.extension() == L".cfg") {
-        animateO = new Animate(filePathWstr);
-    }
-    else if (path.extension() == L".png" || path.extension() == L".jpg") {
-        Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromFile(filePathWstr.c_str());
-        HBITMAP hbm = nullptr;
-        bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0), &hbm);
-        animateO = new Animate(hbm);
-        delete bitmap;
-    }
-    else {
-		MessageBox(NULL, L"Invalid file type selected. Please select a .cfg, .png, or .jpg file.", L"Error", MB_OK | MB_ICONERROR);
-		return;
+    if (!path.empty()) {
+        if (path.extension() == L".cfg") {
+            Animate* animateTmp = new Animate(filePathWstr);
+			if (!animateTmp->GetLastError().empty()) {
+				MessageBox(hwnd, animateTmp->GetLastError().c_str(), L"Error", MB_OK | MB_ICONERROR);
+                animateTmp->~Animate();
+				SelectOptions(hwnd); // Retry selection
+            }
+            else {
+                animateO->~Animate(); // Clean up previous instance
+                animateO = animateTmp;
+            }
+        }
+        else if (path.extension() == L".png" || path.extension() == L".jpg") {
+            Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromFile(filePathWstr.c_str());
+            HBITMAP hbm = nullptr;
+            bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0), &hbm);
+            Animate* animateTmp = new Animate(hbm);
+            delete bitmap;
+            if (!animateTmp->GetLastError().empty()) {
+                MessageBox(hwnd, animateTmp->GetLastError().c_str(), L"Error", MB_OK | MB_ICONERROR);
+                animateTmp->~Animate();
+                SelectOptions(hwnd); // Retry selection
+            }
+            else {
+                animateO->~Animate(); // Clean up previous instance
+                animateO = animateTmp;
+            }
+        }
+        else {
+            MessageBox(hwnd, L"Invalid file type selected. Please select a .cfg, .png, or .jpg file.", L"Error", MB_OK | MB_ICONERROR);
+            SelectOptions(hwnd); // Retry selection
+        }
     }
 }
 

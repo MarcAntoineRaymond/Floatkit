@@ -30,6 +30,9 @@ Animate::Animate(const std::wstring cfgPath)
 {
     InitAnimate();
     LoadConfig(cfgPath);
+	if (!GetLastError().empty()) {
+		return;
+	}
     
     HBITMAP hbm = idleImages[0];
     BITMAP bm;
@@ -52,7 +55,6 @@ void Animate::SetPosition(int x, int y) {
 	posX = x;
 	posY = y;
 }
-
 
 void Animate::StartDragging() {
     if (!draggingImages.empty())
@@ -200,8 +202,8 @@ void Animate::LoadConfig(const std::wstring& configpath) {
     std::ifstream file(configpath);
 
     if (!file.is_open()) {
-        std::wcerr << L"Could not open" << configpath << std::endl;
-		exit(EXIT_FAILURE);
+		AddToLastError(L"Could not open config file: " + configpath);
+		return;
     }
 
     std::unordered_map<std::wstring, std::wstring> config;
@@ -262,8 +264,28 @@ void Animate::LoadConfig(const std::wstring& configpath) {
         scaleStep = std::stof(config[L"scale_step"]);
     }
 
+	if (idleCount < 1) {
+		std::wstring error = L"Invalid idle_count in config: " + std::to_wstring(idleCount) + L"\nidle_count cannot be inferior to 1";
+		AddToLastError(error);
+        return;
+	}
+
 	// Load images based on the config
 	idleImages = LoadVecBitmaps(idleCount, std::filesystem::path(configpath).parent_path().wstring(), idleFilePattern);
 	draggingImages = LoadVecBitmaps(draggingCount, std::filesystem::path(configpath).parent_path().wstring(), draggingFilePattern);
 	clickingImages = LoadVecBitmaps(clickingCount, std::filesystem::path(configpath).parent_path().wstring(), clickingFilePattern);
+}
+
+// Return latest error for the animate object and clear the errors
+void Animate::ClearLastError()
+{
+    lastError.clear();
+}
+
+void Animate::AddToLastError(const std::wstring& error)
+{
+	if (!lastError.empty()) {
+		lastError += L"\n";
+	}
+	lastError += error;
 }
