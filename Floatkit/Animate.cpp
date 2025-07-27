@@ -1,17 +1,47 @@
 #include "Floatkit.h"
 #include "Animate.h"
 
-Animate::Animate(const std::wstring cfgPath)
-	: state(0), posX(0), posY(0), width(0), height(0),
-	idleCount(0), draggingCount(0), clickingCount(0),
-    idleFilePattern(L"idle"), draggingFilePattern(L"dragging"), clickingFilePattern(L"click"),
-	idleFps(2.5f), draggingFps(2.5f), clickingFps(2.5f), currentFrame(0),
-    scaleMin(0.1f), scaleMax(10.0f), scaleStep(0.1f),
-    idleImages(), draggingImages(), clickingImages()
+void Animate::InitAnimate()
 {
-	LoadConfig(cfgPath);
+	state = 0;
+	posX = 0;
+	posY = 0;
+	width = 0;
+	height = 0;
+	idleCount = 1;
+	draggingCount = 0; // No dragging frames by default
+	clickingCount = 0; // No clicking frames by default
+	idleFilePattern = L"idle";
+	draggingFilePattern = L"dragging";
+	clickingFilePattern = L"click";
+	idleFps = 2.5f;
+	draggingFps = 2.5f;
+	clickingFps = 2.5f;
+	currentFrame = 0;
+	scaleMin = 0.1f;
+	scaleMax = 10.0f;
+	scaleStep = 0.1f;
+	idleImages.clear();
+	draggingImages.clear();
+	clickingImages.clear();
+}
+
+Animate::Animate(const std::wstring cfgPath)
+{
+    InitAnimate();
+    LoadConfig(cfgPath);
     
     HBITMAP hbm = idleImages[0];
+    BITMAP bm;
+    GetObject(hbm, sizeof(BITMAP), &bm);
+    width = bm.bmWidth;
+    height = bm.bmHeight;
+}
+
+Animate::Animate(HBITMAP hbm)
+{
+	InitAnimate();
+    idleImages = { hbm };
     BITMAP bm;
     GetObject(hbm, sizeof(BITMAP), &bm);
     width = bm.bmWidth;

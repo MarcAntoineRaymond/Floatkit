@@ -247,9 +247,23 @@ void UpdateImage(HWND hwnd) {
 
 void SelectOptions()
 {
-    std::wstring cfgPathWstr = SearchConfig();
+    std::wstring filePathWstr = SearchConfig();
 	animateO->~Animate(); // Clean up previous instance
-	animateO = new Animate(cfgPathWstr);
+    std::filesystem::path path(filePathWstr);
+    if (path.extension() == L".cfg") {
+        animateO = new Animate(filePathWstr);
+    }
+    else if (path.extension() == L".png" || path.extension() == L".jpg") {
+        Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromFile(filePathWstr.c_str());
+        HBITMAP hbm = nullptr;
+        bitmap->GetHBITMAP(Gdiplus::Color(0, 0, 0), &hbm);
+        animateO = new Animate(hbm);
+        delete bitmap;
+    }
+    else {
+		MessageBox(NULL, L"Invalid file type selected. Please select a .cfg, .png, or .jpg file.", L"Error", MB_OK | MB_ICONERROR);
+		return;
+    }
 }
 
 std::wstring SearchConfig()
@@ -287,8 +301,8 @@ std::wstring SearchConfig()
             CoTaskMemFree(documentsPath);
         }
 
-        // Look for config file
-        hr = pFileOpen->SetDefaultExtension(L"cfg");
+        // Look for config file or image
+        hr = pFileOpen->SetDefaultExtension(L"cfg;png;jpg");
         if (SUCCEEDED(hr))
         {
             // Show the Open dialog box

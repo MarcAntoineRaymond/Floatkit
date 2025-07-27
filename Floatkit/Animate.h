@@ -34,7 +34,10 @@ private:
    int currentFrame;
 public:
 	Animate(const std::wstring cfgPath);
+	Animate(HBITMAP hbm);
    ~Animate();
+
+   void InitAnimate();
 
    // Logic
    void LoadConfig(const std::wstring& configPath);

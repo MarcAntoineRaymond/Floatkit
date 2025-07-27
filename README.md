@@ -8,7 +8,7 @@ Designed for playful desktop companions, animated mascots, or interactive overla
 
 ## ✨ Features
 
-- 🖼️ **2D Sprite Rendering** — Load static or animated images (need to provide a cfg file describing the sprites, names, counts, see below for format explanation).
+- 🖼️ **2D Sprite Rendering** — Load static or animated images (need to provide a cfg file describing the sprites, names, counts, see below for format explanation, or just select a png file).
 - 🧲 **Window-Top Overlay** — Renders always on top of other windows while allowing interaction (Does not work with Full Screen Exclusive apps yet, switch to borderless in this case for now).
 - 🖱️ **Draggable Sprites** — Drag and place sprites anywhere on your screen.
 - 🔍 **Scaling Support** — Resize sprites to fit your visual style or resolution needs (Use mouse wheel).
