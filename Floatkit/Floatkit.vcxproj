@@ -147,6 +147,33 @@
     <ResourceCompile Include="Floatkit.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="assets\cat\cat_0.png" />
+    <Image Include="assets\cat\cat_1.png" />
+    <Image Include="assets\cat\cat_2.png" />
+    <Image Include="assets\cat\cat_3.png" />
+    <Image Include="assets\cat\cat_dragging_0.png" />
+    <Image Include="assets\cat\cat_dragging_1.png" />
+    <Image Include="assets\cat\cat_dragging_2.png" />
+    <Image Include="assets\cat\cat_dragging_3.png" />
+    <Image Include="assets\cat\cat_dragging_4.png" />
+    <Image Include="assets\cat\cat_dragging_5.png" />
+    <Image Include="assets\cat\cat_dragging_6.png" />
+    <Image Include="assets\cat\cat_dragging_7.png" />
+    <Image Include="assets\cat\cat_dragging_8.png" />
+    <Image Include="assets\cat\cat_dragging_9.png" />
+    <Image Include="assets\cat\cat_jumping_0.png" />
+    <Image Include="assets\cat\cat_jumping_1.png" />
+    <Image Include="assets\cat\cat_jumping_10.png" />
+    <Image Include="assets\cat\cat_jumping_11.png" />
+    <Image Include="assets\cat\cat_jumping_12.png" />
+    <Image Include="assets\cat\cat_jumping_2.png" />
+    <Image Include="assets\cat\cat_jumping_3.png" />
+    <Image Include="assets\cat\cat_jumping_4.png" />
+    <Image Include="assets\cat\cat_jumping_5.png" />
+    <Image Include="assets\cat\cat_jumping_6.png" />
+    <Image Include="assets\cat\cat_jumping_7.png" />
+    <Image Include="assets\cat\cat_jumping_8.png" />
+    <Image Include="assets\cat\cat_jumping_9.png" />
     <Image Include="Floatkit.ico" />
   </ItemGroup>
   <ItemGroup>

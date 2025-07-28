@@ -1,4 +1,3 @@
-#include "Floatkit.h"
 #include "Animate.h"
 
 void Animate::InitAnimate()
@@ -26,6 +25,32 @@ void Animate::InitAnimate()
 	clickingImages.clear();
 }
 
+// Create an Animate object with resources from rc file
+Animate::Animate() {
+	InitAnimate();
+	idleCount = 4;
+	draggingCount = 10;
+	clickingCount = 13;
+    scaleMin = 5.0f;
+	scaleStep = 5.0f;
+	draggingFps = 5.0f;
+    clickingFps = 10.0f;
+	// Load default images from resources
+    for (int i = 0; i < idleCount + draggingCount + clickingCount; i++) {
+        Gdiplus::Bitmap* bmp = LoadBitmapFromResource(IDB_PNG1 + i);
+        HBITMAP hbm = nullptr;
+        bmp->GetHBITMAP(Gdiplus::Color(0, 0, 0), &hbm);
+		if (i < idleCount)
+			idleImages.push_back(hbm);
+		else if (i < idleCount + draggingCount)
+			draggingImages.push_back(hbm);
+		else
+			clickingImages.push_back(hbm);
+		idleImages.push_back(hbm);
+		delete bmp;
+    }
+}
+
 Animate::Animate(const std::wstring cfgPath)
 {
     InitAnimate();
@@ -39,6 +64,10 @@ Animate::Animate(const std::wstring cfgPath)
     GetObject(hbm, sizeof(BITMAP), &bm);
     width = bm.bmWidth;
     height = bm.bmHeight;
+	if (draggingImages.empty()) {
+		draggingImages.push_back(hbm);
+		draggingCount = 1;
+	}
 }
 
 Animate::Animate(HBITMAP hbm)
@@ -49,6 +78,10 @@ Animate::Animate(HBITMAP hbm)
     GetObject(hbm, sizeof(BITMAP), &bm);
     width = bm.bmWidth;
     height = bm.bmHeight;
+    if (draggingImages.empty()) {
+        draggingImages.push_back(hbm);
+		draggingCount = 1;
+    }
 }
 
 void Animate::SetPosition(int x, int y) {

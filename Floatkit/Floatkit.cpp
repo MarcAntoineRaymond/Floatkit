@@ -1,8 +1,6 @@
 #include "Floatkit.h"
 #include "Animate.h"
 
-std::wstring defaultConfig = L"assets/cat/cat.cfg";
-
 Animate* animateO = nullptr;
 
 ULONG_PTR gdiplusToken;
@@ -21,7 +19,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
 
-    animateO = new Animate(defaultConfig);
+    animateO = new Animate();
 	if (!animateO->GetLastError().empty()) {
 		MessageBox(NULL, animateO->GetLastError().c_str(), L"Error", MB_OK | MB_ICONERROR);
 		delete animateO;
@@ -359,4 +357,44 @@ std::wstring SearchConfig()
     CoUninitialize();
 
     return filePath;
+}
+
+Gdiplus::Bitmap* LoadBitmapFromResource(UINT resourceID)
+{
+    // Find and load the resource
+    HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resourceID), L"PNG");
+    if (!hRes) return nullptr;
+
+    HGLOBAL hResData = LoadResource(NULL, hRes);
+    if (!hResData) return nullptr;
+
+    DWORD imageSize = SizeofResource(NULL, hRes);
+    const void* pResourceData = LockResource(hResData);
+    if (!pResourceData) return nullptr;
+
+    // Copy resource data to a global memory buffer
+    HGLOBAL hBuffer = GlobalAlloc(GMEM_MOVEABLE, imageSize);
+    if (!hBuffer) return nullptr;
+
+    void* pBuffer = GlobalLock(hBuffer);
+    memcpy(pBuffer, pResourceData, imageSize);
+    GlobalUnlock(hBuffer);
+
+    // Create a stream on the buffer
+    IStream* pStream = nullptr;
+    if (CreateStreamOnHGlobal(hBuffer, TRUE, &pStream) != S_OK) {
+        GlobalFree(hBuffer);
+        return nullptr;
+    }
+
+    // Create GDI+ Bitmap from stream
+    Gdiplus::Bitmap* bitmap = new Gdiplus::Bitmap(pStream, FALSE);
+    pStream->Release(); // Stream owns the HGLOBAL (TRUE flag)
+
+    if (bitmap->GetLastStatus() != Gdiplus::Ok) {
+        delete bitmap;
+        return nullptr;
+    }
+
+    return bitmap; // Caller is responsible for delete
 }

@@ -6,8 +6,10 @@
 #include <cwctype>
 #include <algorithm>
 #include <filesystem>
+#include "Floatkit.h"
 
 std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::wstring& folder, const std::wstring& filePattern);
+Gdiplus::Bitmap* LoadBitmapFromResource(UINT resourceID);
 
 class Animate {
 private:
@@ -34,6 +36,8 @@ private:
    int currentFrame;
    std::wstring lastError;
 public:
+	// Constructors
+	Animate(); // Create an Animate object with resources from rc file
 	Animate(const std::wstring cfgPath);
 	Animate(HBITMAP hbm);
    ~Animate();
