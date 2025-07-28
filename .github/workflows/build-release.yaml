@@ -26,7 +26,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Floatkit.exe
-          path: build/bin/Floatkit.exe
+          path: build/bin/Release/Floatkit.exe
 
   release:
     runs-on: windows-latest
