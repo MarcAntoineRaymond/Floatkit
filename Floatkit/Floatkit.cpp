@@ -15,7 +15,7 @@ POINT dragOffset = { 0, 0 };
 bool hasClicked = false;
 float g_scale = 1.0f;
 ULONGLONG lastFrameTime = GetTickCount64();
-float fps = 60.0f; // 60 FPS ~ 1/60 * 1000 ms per frame
+float fps = 60.0f;
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
