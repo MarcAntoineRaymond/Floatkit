@@ -46,7 +46,6 @@ Animate::Animate() {
 			draggingImages.push_back(hbm);
 		else
 			clickingImages.push_back(hbm);
-		idleImages.push_back(hbm);
 		delete bmp;
     }
 }
