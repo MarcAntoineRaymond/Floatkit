@@ -2,7 +2,7 @@
 
 void Animate::InitAnimate()
 {
-	state = 0;
+	state = State::Idle;
 	posX = 0;
 	posY = 0;
 	width = 0;
@@ -10,12 +10,15 @@ void Animate::InitAnimate()
 	idleCount = 1;
 	draggingCount = 0; // No dragging frames by default
 	clickingCount = 0; // No clicking frames by default
+    movingCount = 0; // No moving frames by default
 	idleFilePattern = L"idle";
 	draggingFilePattern = L"dragging";
 	clickingFilePattern = L"click";
+    movingFilePattern = L"moving";
 	idleFps = 2.5f;
 	draggingFps = 2.5f;
 	clickingFps = 2.5f;
+    movingFps = 2.5f;
 	currentFrame = 0;
 	scaleMin = 0.1f;
 	scaleMax = 10.0f;
@@ -23,6 +26,8 @@ void Animate::InitAnimate()
 	idleImages.clear();
 	draggingImages.clear();
 	clickingImages.clear();
+    movingImages.clear();
+    movingDirection = Direction::Right;
 }
 
 // Create an Animate object with resources from rc file
@@ -31,10 +36,12 @@ Animate::Animate() {
 	idleCount = 4;
 	draggingCount = 10;
 	clickingCount = 13;
+    movingCount = 13;
     scaleMin = 5.0f;
 	scaleStep = 5.0f;
 	draggingFps = 5.0f;
     clickingFps = 10.0f;
+    movingFps = 10.0f;
 	// Load default images from resources
     for (int i = 0; i < idleCount + draggingCount + clickingCount; i++) {
         Gdiplus::Bitmap* bmp = LoadBitmapFromResource(IDB_PNG1 + i);
@@ -48,6 +55,7 @@ Animate::Animate() {
 			clickingImages.push_back(hbm);
 		delete bmp;
     }
+    movingImages = clickingImages;
 }
 
 Animate::Animate(const std::wstring cfgPath)
@@ -90,38 +98,58 @@ void Animate::SetPosition(int x, int y) {
 
 void Animate::StartDragging() {
     if (!draggingImages.empty())
-        state = 1;
+        state = State::Dragging;
 }
 
 void Animate::StopDragging() {
-	if (state == 1)
+	if (state == State::Dragging)
 		// If we were dragging, reset to idle state
-		state = 0;
+		state = State::Idle;
 }
 
 void Animate::StartClicking() {
     if (!clickingImages.empty()) {
-        state = 2;
+        state = State::Clicking;
 		currentFrame = 0; // Reset frame to the first one when starting clicking
     }
 }
 
 void Animate::StopClicking() {
-    if (state == 2)
+    if (state == State::Clicking)
         // If we were clicking, reset to idle state
-        state = 0;
+        state = State::Idle;
+}
+
+void Animate::StartMoving(Direction direction) {
+    if (!clickingImages.empty()) {
+        if (state != State::Moving) {
+            currentFrame = 0; // Reset frame to the first one when starting to move
+            state = State::Moving;
+        }
+        movingDirection = direction;
+    }
+}
+
+void Animate::StopMoving() {
+    if (state == State::Moving)
+        // If we were moving, reset to idle state
+        state = State::Idle;
 }
 
 int Animate::GetStateCount() const {
     switch (state)
     {
-    case 1:
+    case State::Dragging:
         // Dragging state
         return draggingCount;
         break;
-	case 2:
+	case State::Clicking:
         // Clicking state
         return clickingCount;
+        break;
+    case State::Moving:
+        // Moving state
+        return movingCount;
         break;
     default:
         // Normal state
@@ -133,13 +161,17 @@ int Animate::GetStateCount() const {
 float Animate::GetStateFps() const {
     switch (state)
     {
-    case 1:
+    case State::Dragging:
         // Dragging state
         return draggingFps;
         break;
-    case 2:
+    case State::Clicking:
         // Clicking state
         return clickingFps;
+        break;
+    case State::Moving:
+        // Moving state
+        return movingFps;
         break;
     default:
         // Normal state
@@ -151,13 +183,13 @@ float Animate::GetStateFps() const {
 HBITMAP Animate::GetImage(int index) {
     switch (state)
     {
-    case 1:
+    case State::Dragging:
         // Dragging state
 		if (index < 0 || index >= draggingImages.size())
 			index = 0;
         return draggingImages[index];
         break;
-	case 2:
+	case State::Clicking:
 		// Clicking state
 		if (index < 0 || index >= clickingImages.size())
 			index = 0;
@@ -166,6 +198,14 @@ HBITMAP Animate::GetImage(int index) {
 			StopClicking();
 		return clickingImages[index];
 		break;
+    case State::Moving:
+        // Moving state
+        if (index < 0 || index >= movingImages.size())
+            index = 0;
+        if (movingDirection == Direction::Left)
+            return FlipBitmapHorizontal(movingImages[index]);
+        return movingImages[index];
+        break;
     default:
         // Normal state
 		if (index < 0 || index >= idleImages.size())
@@ -175,12 +215,76 @@ HBITMAP Animate::GetImage(int index) {
     }
 }
 
+HBITMAP FlipBitmapHorizontal(HBITMAP hOriginal)
+{
+    if (!hOriginal)
+        return nullptr;
+
+    BITMAP bm{};
+    if (GetObject(hOriginal, sizeof(BITMAP), &bm) == 0)
+        return nullptr;
+
+    HDC hdcScreen = GetDC(nullptr);
+    HDC hdcSrc = CreateCompatibleDC(hdcScreen);
+    HDC hdcDst = CreateCompatibleDC(hdcScreen);
+
+    if (!hdcSrc || !hdcDst)
+    {
+        if (hdcSrc) DeleteDC(hdcSrc);
+        if (hdcDst) DeleteDC(hdcDst);
+        ReleaseDC(nullptr, hdcScreen);
+        return nullptr;
+    }
+
+    HBITMAP hFlipped = CreateCompatibleBitmap(hdcScreen, bm.bmWidth, bm.bmHeight);
+    if (!hFlipped)
+    {
+        DeleteDC(hdcSrc);
+        DeleteDC(hdcDst);
+        ReleaseDC(nullptr, hdcScreen);
+        return nullptr;
+    }
+
+    HGDIOBJ oldSrc = SelectObject(hdcSrc, hOriginal);
+    HGDIOBJ oldDst = SelectObject(hdcDst, hFlipped);
+
+    SetStretchBltMode(hdcDst, COLORONCOLOR);
+
+    // Copy original into destination, mirrored horizontally
+    BOOL ok = StretchBlt(
+        hdcDst,
+        0, 0,
+        bm.bmWidth, bm.bmHeight,
+        hdcSrc,
+        bm.bmWidth - 1, 0,
+        -bm.bmWidth, bm.bmHeight,
+        SRCCOPY
+    );
+
+    SelectObject(hdcSrc, oldSrc);
+    SelectObject(hdcDst, oldDst);
+
+    DeleteDC(hdcSrc);
+    DeleteDC(hdcDst);
+    ReleaseDC(nullptr, hdcScreen);
+
+    if (!ok)
+    {
+        DeleteObject(hFlipped);
+        return nullptr;
+    }
+
+    return hFlipped;
+}
+
 Animate::~Animate() {
     for (HBITMAP bmp : idleImages)
         if (bmp) DeleteObject(bmp);
     for (HBITMAP bmp : draggingImages)
         if (bmp) DeleteObject(bmp);
     for (HBITMAP bmp : clickingImages)
+        if (bmp) DeleteObject(bmp);
+    for (HBITMAP bmp : movingImages)
         if (bmp) DeleteObject(bmp);
 }
 
@@ -286,6 +390,15 @@ void Animate::LoadConfig(const std::wstring& configpath) {
 	if (config.count(L"click_fps")) {
 		clickingFps = std::stof(config[L"click_fps"]);
 	}
+    if (config.count(L"moving")) {
+        movingFilePattern = config[L"moving"];
+    }
+    if (config.count(L"moving_count")) {
+        movingCount = std::stoi(config[L"moving_count"]);
+    }
+    if (config.count(L"moving_fps")) {
+        movingFps = std::stof(config[L"moving_fps"]);
+    }
     if (config.count(L"scale_min")) {
         scaleMin = std::stof(config[L"scale_min"]);
     }
@@ -306,6 +419,7 @@ void Animate::LoadConfig(const std::wstring& configpath) {
 	idleImages = LoadVecBitmaps(idleCount, std::filesystem::path(configpath).parent_path().wstring(), idleFilePattern);
 	draggingImages = LoadVecBitmaps(draggingCount, std::filesystem::path(configpath).parent_path().wstring(), draggingFilePattern);
 	clickingImages = LoadVecBitmaps(clickingCount, std::filesystem::path(configpath).parent_path().wstring(), clickingFilePattern);
+    movingImages = LoadVecBitmaps(movingCount, std::filesystem::path(configpath).parent_path().wstring(), movingFilePattern);
 }
 
 // Return latest error for the animate object and clear the errors

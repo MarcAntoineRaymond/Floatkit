@@ -10,6 +10,21 @@
 
 std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::wstring& folder, const std::wstring& filePattern);
 Gdiplus::Bitmap* LoadBitmapFromResource(UINT resourceID);
+HBITMAP FlipBitmapHorizontal(HBITMAP hOriginal);
+
+enum class Direction
+{
+	Left,
+	Right
+};
+
+enum class State
+{
+	Idle,
+	Dragging,
+	Clicking,
+	Moving
+};
 
 class Animate {
 private:
@@ -17,19 +32,24 @@ private:
    int height;
    int posX;
    int posY;
-   int state; // 0: normal, 1: dragging, 2: clicking
+   State state;
    std::vector<HBITMAP> idleImages;
    int idleCount;
    std::wstring idleFilePattern;
+   float idleFps;
    std::vector<HBITMAP> draggingImages;
    int draggingCount;
    std::wstring draggingFilePattern;
+   float draggingFps;
    std::vector<HBITMAP> clickingImages;
    int clickingCount;
    std::wstring clickingFilePattern;
-   float idleFps;
-   float draggingFps;
    float clickingFps;
+   std::vector<HBITMAP> movingImages;
+   int movingCount;
+   std::wstring movingFilePattern;
+   float movingFps;
+   Direction movingDirection;
    float scaleMin;
    float scaleMax;
    float scaleStep;
@@ -51,8 +71,12 @@ public:
    void StopClicking();
    void StartDragging();
    void StartClicking();
-   bool IsDragging() const { return state == 1; }
-   bool IsClicking() const { return state == 2; }
+   void StartMoving(Direction direction);
+   void StopMoving();
+   bool IsIdle() const { return state == State::Idle; }
+   bool IsDragging() const { return state == State::Dragging; }
+   bool IsClicking() const { return state == State::Clicking; }
+   bool IsMoving() const { return state == State::Moving; }
    HBITMAP GetImage(int index);
    int GetStateCount() const;
    float GetStateFps() const;

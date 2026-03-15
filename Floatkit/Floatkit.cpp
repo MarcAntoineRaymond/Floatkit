@@ -1,5 +1,9 @@
 #include "Floatkit.h"
 #include "Animate.h"
+#define IDT_REFRESH 1
+#define REFRESH_INTERVAL static_cast<int>(1000.0f / fps)
+#define IDT_FOLLOW_CURSOR 2
+#define FOLLOW_SPEED 12    // pixels per tick
 
 Animate* animateO = nullptr;
 
@@ -43,7 +47,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     UpdateImage(hwnd);
     ShowWindow(hwnd, nCmd);
     InitNotifyIcon(hwnd, hInstance);
-    SetTimer(hwnd, 1, static_cast<int>(1000.0f / fps), NULL);
+    SetTimer(hwnd, IDT_REFRESH, REFRESH_INTERVAL, NULL);
 
     MSG msg = {};
     while (GetMessageW(&msg, NULL, 0, 0)) {
@@ -170,11 +174,59 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
         break;
 	case WM_TIMER:
-		if (wParam == 1) {
+		if (wParam == IDT_REFRESH) {
+            POINT cursor;
+            if (GetCursorPos(&cursor))
+            {
+                if (((*animateO).IsIdle() || (*animateO).IsMoving())) {
+                    RECT rc;
+                    if (GetWindowRect(hwnd, &rc))
+                    {
+                        int windowX = rc.left;
+                        int windowY = rc.top;
+                        int windowWidth = rc.right - rc.left;
+
+                        int currentCenterX = windowX + windowWidth / 2;
+                        int targetCenterX = cursor.x;
+
+                        int dx = targetCenterX - currentCenterX;
+                        int step = 0;
+
+                        if (dx > 0)
+                            step = min(dx, FOLLOW_SPEED);
+                        else if (dx < 0)
+                            step = max(dx, -FOLLOW_SPEED);
+
+                        if (step != 0) {
+                            // Start moving
+                            Direction direction = Direction::Right;
+                            if (step < 0) {
+                                direction = Direction::Left;
+                            }
+                            (*animateO).StartMoving(direction);
+                            int newX = windowX + step;
+                            (*animateO).SetPosition(newX, windowY);
+                            SetWindowPos(
+                                hwnd,
+                                nullptr,
+                                newX,
+                                windowY,
+                                0,
+                                0,
+                                SWP_NOZORDER | SWP_NOSIZE | SWP_NOACTIVATE
+                            );
+                        }
+                        else {
+                            (*animateO).StopMoving();
+                        }
+                    }
+                }
+            }
 		    UpdateImage(hwnd);
 		}
 		return 0;
     case WM_DESTROY:
+        KillTimer(hwnd, IDT_FOLLOW_CURSOR);
         PostQuitMessage(0);
         DeleteNotifyIcon();
         return 0;
