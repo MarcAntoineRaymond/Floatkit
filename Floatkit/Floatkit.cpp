@@ -178,7 +178,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             POINT cursor;
             if (GetCursorPos(&cursor))
             {
-                if (((*animateO).IsIdle() || (*animateO).IsMoving())) {
+                if (((*animateO).IsIdle() || (*animateO).IsMoving()) && (*animateO).IsMovingEnabled()) {
                     RECT rc;
                     if (GetWindowRect(hwnd, &rc))
                     {

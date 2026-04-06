@@ -46,10 +46,12 @@ private:
    std::wstring clickingFilePattern;
    float clickingFps;
    std::vector<HBITMAP> movingImages;
+   std::vector<HBITMAP> movingImagesFlipped;
    int movingCount;
    std::wstring movingFilePattern;
    float movingFps;
    Direction movingDirection;
+   float movingEnabled;
    float scaleMin;
    float scaleMax;
    float scaleStep;
@@ -77,6 +79,7 @@ public:
    bool IsDragging() const { return state == State::Dragging; }
    bool IsClicking() const { return state == State::Clicking; }
    bool IsMoving() const { return state == State::Moving; }
+   bool IsMovingEnabled() const { return movingEnabled; }
    HBITMAP GetImage(int index);
    int GetStateCount() const;
    float GetStateFps() const;

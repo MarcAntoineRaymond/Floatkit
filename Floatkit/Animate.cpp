@@ -27,7 +27,9 @@ void Animate::InitAnimate()
 	draggingImages.clear();
 	clickingImages.clear();
     movingImages.clear();
+    movingImagesFlipped.clear();
     movingDirection = Direction::Right;
+    movingEnabled = false;
 }
 
 // Create an Animate object with resources from rc file
@@ -56,6 +58,10 @@ Animate::Animate() {
 		delete bmp;
     }
     movingImages = clickingImages;
+    for (HBITMAP bmp : movingImages) {
+        movingImagesFlipped.push_back(FlipBitmapHorizontal(bmp));
+    }
+    movingEnabled = true;
 }
 
 Animate::Animate(const std::wstring cfgPath)
@@ -121,7 +127,7 @@ void Animate::StopClicking() {
 }
 
 void Animate::StartMoving(Direction direction) {
-    if (!clickingImages.empty()) {
+    if (!movingImages.empty()) {
         if (state != State::Moving) {
             currentFrame = 0; // Reset frame to the first one when starting to move
             state = State::Moving;
@@ -203,7 +209,7 @@ HBITMAP Animate::GetImage(int index) {
         if (index < 0 || index >= movingImages.size())
             index = 0;
         if (movingDirection == Direction::Left)
-            return FlipBitmapHorizontal(movingImages[index]);
+            return movingImagesFlipped[index];
         return movingImages[index];
         break;
     default:
@@ -285,6 +291,8 @@ Animate::~Animate() {
     for (HBITMAP bmp : clickingImages)
         if (bmp) DeleteObject(bmp);
     for (HBITMAP bmp : movingImages)
+        if (bmp) DeleteObject(bmp);
+    for (HBITMAP bmp : movingImagesFlipped)
         if (bmp) DeleteObject(bmp);
 }
 
@@ -420,6 +428,19 @@ void Animate::LoadConfig(const std::wstring& configpath) {
 	draggingImages = LoadVecBitmaps(draggingCount, std::filesystem::path(configpath).parent_path().wstring(), draggingFilePattern);
 	clickingImages = LoadVecBitmaps(clickingCount, std::filesystem::path(configpath).parent_path().wstring(), clickingFilePattern);
     movingImages = LoadVecBitmaps(movingCount, std::filesystem::path(configpath).parent_path().wstring(), movingFilePattern);
+    for (HBITMAP bmp : movingImages) {
+        movingImagesFlipped.push_back(FlipBitmapHorizontal(bmp));
+    }
+
+    // Check if moving enabled after loading images for default
+    if (config.count(L"moving_enabled")) {
+        if (config[L"moving_enabled"] == L"true" || config[L"moving_enabled"] == L"True")
+            movingEnabled = true;
+    }
+    else {
+        if (!movingImages.empty())
+            movingEnabled = true;
+    }
 }
 
 // Return latest error for the animate object and clear the errors

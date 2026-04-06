@@ -58,7 +58,11 @@ Some parameters are optional, see explanation and defaults value:
 |dragging_fps|2.5|Frames per second for the idle animation|
 |click|click|Name of the click sprites, name have the format `<click>_{n}.png` see samples in assets folder|
 |click_count|0|Number of frames in the click animation|
-|click_fps|2.5|Frames per second for the idle animation|
+|click_fps|2.5|Frames per second for the click animation|
+|moving|moving|Name of the moving sprites, name have the format `<moving>_{n}.png` see samples in assets folder|
+|moving_count|0|Number of frames in the moving animation|
+|moving_fps|2.5|Frames per second for the moving animation|
+|moving_enabled|false|Enable animation moving toward mouse default to true if moving images are not empty|
 |scale_min|0.1|Minimum scale ratio that can be applied for these sprites|
 |scale_max|10|Maximum scale ratio that can be applied for these sprites|
 |scale_step|0.1|How much scale ratio will change when use mouse wheel to scale sprites|
