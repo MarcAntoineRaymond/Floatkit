@@ -305,7 +305,7 @@ void SelectOptions(HWND hwnd)
     std::wstring filePathWstr = SearchConfig();
     std::filesystem::path path(filePathWstr);
     if (!path.empty()) {
-        if (path.extension() == L".cfg") {
+        if (path.extension() == L".cfg" || path.extension() == L".gif") {
             Animate* animateTmp = new Animate(filePathWstr);
 			if (!animateTmp->GetLastError().empty()) {
 				MessageBox(hwnd, animateTmp->GetLastError().c_str(), L"Error", MB_OK | MB_ICONERROR);
@@ -376,7 +376,7 @@ std::wstring SearchConfig()
         }
 
         // Look for config file or image
-        hr = pFileOpen->SetDefaultExtension(L"cfg;png;jpg");
+        hr = pFileOpen->SetDefaultExtension(L"cfg;png;jpg;gif");
         if (SUCCEEDED(hr))
         {
             // Show the Open dialog box

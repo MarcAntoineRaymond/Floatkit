@@ -8,7 +8,8 @@
 #include <filesystem>
 #include "Floatkit.h"
 
-std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::wstring& folder, const std::wstring& filePattern);
+std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::filesystem::path& filePath);
+std::vector<HBITMAP> LoadGifFrames(const std::filesystem::path filePath, float& outFps);
 Gdiplus::Bitmap* LoadBitmapFromResource(UINT resourceID);
 HBITMAP FlipBitmapHorizontal(HBITMAP hOriginal);
 

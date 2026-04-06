@@ -67,10 +67,16 @@ Animate::Animate() {
 Animate::Animate(const std::wstring cfgPath)
 {
     InitAnimate();
-    LoadConfig(cfgPath);
-	if (!GetLastError().empty()) {
-		return;
-	}
+    if (cfgPath.substr(cfgPath.find_last_of(L".") + 1) == L"gif") {
+        idleImages = LoadGifFrames(cfgPath, idleFps);
+        idleCount = idleImages.size();
+    }
+    else {
+        LoadConfig(cfgPath);
+        if (!GetLastError().empty()) {
+            return;
+        }
+    }
     
     HBITMAP hbm = idleImages[0];
     BITMAP bm;
@@ -296,13 +302,13 @@ Animate::~Animate() {
         if (bmp) DeleteObject(bmp);
 }
 
-std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::wstring& folder, const std::wstring& filePattern)
+std::vector<HBITMAP> LoadVecBitmaps(int frameCount, const std::filesystem::path& filePath)
 {
     std::vector<HBITMAP> bitmaps;
     for (int i = 0; i < frameCount; ++i)
     {
         std::wstringstream path;
-        path << folder << L"\\" << filePattern << "_" << i << L".png";
+        path << filePath << "_" << i << L".png";
 
         Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromFile(path.str().c_str());
         if (!bitmap || bitmap->GetLastStatus() != Gdiplus::Ok) {
@@ -417,19 +423,70 @@ void Animate::LoadConfig(const std::wstring& configpath) {
         scaleStep = std::stof(config[L"scale_step"]);
     }
 
-	if (idleCount < 1) {
-		std::wstring error = L"Invalid idle_count in config: " + std::to_wstring(idleCount) + L"\nidle_count cannot be inferior to 1";
-		AddToLastError(error);
-        return;
-	}
-
 	// Load images based on the config
-	idleImages = LoadVecBitmaps(idleCount, std::filesystem::path(configpath).parent_path().wstring(), idleFilePattern);
-	draggingImages = LoadVecBitmaps(draggingCount, std::filesystem::path(configpath).parent_path().wstring(), draggingFilePattern);
-	clickingImages = LoadVecBitmaps(clickingCount, std::filesystem::path(configpath).parent_path().wstring(), clickingFilePattern);
-    movingImages = LoadVecBitmaps(movingCount, std::filesystem::path(configpath).parent_path().wstring(), movingFilePattern);
+
+    std::filesystem::path base = std::filesystem::path(configpath).parent_path();
+
+    // --- IDLE ---
+    std::filesystem::path idlePath = base / idleFilePattern;
+    std::filesystem::path idleGif = idlePath;
+    idleGif += L".gif";
+
+    if (std::filesystem::exists(idleGif)) {
+        idleImages = LoadGifFrames(idleGif.wstring(), idleFps);
+        idleCount = idleImages.size();
+    }
+    else {
+        idleImages = LoadVecBitmaps(idleCount, idlePath.wstring());
+    }
+
+    // --- DRAGGING ---
+    std::filesystem::path draggingPath = base / draggingFilePattern;
+    std::filesystem::path draggingGif = draggingPath;
+    draggingGif += L".gif";
+
+    if (std::filesystem::exists(draggingGif)) {
+        draggingImages = LoadGifFrames(draggingGif.wstring(), draggingFps);
+        draggingCount = draggingImages.size();
+    }
+    else {
+        draggingImages = LoadVecBitmaps(draggingCount, draggingPath.wstring());
+    }
+
+    // --- CLICKING ---
+    std::filesystem::path clickingPath = base / clickingFilePattern;
+    std::filesystem::path clickingGif = clickingPath;
+    clickingGif += L".gif";
+
+    if (std::filesystem::exists(clickingGif)) {
+        clickingImages = LoadGifFrames(clickingGif.wstring(), clickingFps);
+        clickingCount = clickingImages.size();
+    }
+    else {
+        clickingImages = LoadVecBitmaps(clickingCount, clickingPath.wstring());
+    }
+
+    // --- MOVING ---
+    std::filesystem::path movingPath = base / movingFilePattern;
+    std::filesystem::path movingGif = movingPath;
+    movingGif += L".gif";
+
+    if (std::filesystem::exists(movingGif)) {
+        movingImages = LoadGifFrames(movingGif.wstring(), movingFps);
+        movingCount = movingImages.size();
+    }
+    else {
+        movingImages = LoadVecBitmaps(movingCount, movingPath.wstring());
+    }
+
     for (HBITMAP bmp : movingImages) {
         movingImagesFlipped.push_back(FlipBitmapHorizontal(bmp));
+    }
+
+    if (idleCount < 1) {
+        std::wstring error = L"Invalid idle_count in config: " + std::to_wstring(idleCount) + L"\nidle_count cannot be inferior to 1";
+        AddToLastError(error);
+        return;
     }
 
     // Check if moving enabled after loading images for default
@@ -441,6 +498,62 @@ void Animate::LoadConfig(const std::wstring& configpath) {
         if (!movingImages.empty())
             movingEnabled = true;
     }
+}
+
+std::vector<HBITMAP> LoadGifFrames(const std::filesystem::path filePath, float& outFps)
+{
+    std::vector<HBITMAP> frames;
+
+    Gdiplus::Bitmap* gif = Gdiplus::Bitmap::FromFile(filePath.c_str());
+    if (!gif || gif->GetLastStatus() != Gdiplus::Ok) {
+        delete gif;
+        return frames;
+    }
+
+    GUID dimensionID;
+    UINT count = gif->GetFrameDimensionsCount();
+    if (count == 0) {
+        delete gif;
+        return frames;
+    }
+
+    gif->GetFrameDimensionsList(&dimensionID, 1);
+
+    UINT frameCount = gif->GetFrameCount(&dimensionID);
+
+    // Get frame delays (PropertyTagFrameDelay = 0x5100)
+    UINT size = gif->GetPropertyItemSize(PropertyTagFrameDelay);
+    std::vector<BYTE> buffer(size);
+
+    Gdiplus::PropertyItem* propItem = reinterpret_cast<Gdiplus::PropertyItem*>(buffer.data());
+    gif->GetPropertyItem(PropertyTagFrameDelay, size, propItem);
+
+    UINT* delays = reinterpret_cast<UINT*>(propItem->value);
+
+    // Extract frames
+    for (UINT i = 0; i < frameCount; ++i)
+    {
+        gif->SelectActiveFrame(&dimensionID, i);
+
+        HBITMAP hbm = nullptr;
+        gif->GetHBITMAP(Gdiplus::Color(0, 0, 0), &hbm);
+        frames.push_back(hbm);
+    }
+
+    // Compute FPS (GIF delay is in 1/100 sec)
+    if (frameCount > 0) {
+        float avgDelay = 0.0f;
+        for (UINT i = 0; i < frameCount; ++i)
+            avgDelay += delays[i];
+
+        avgDelay /= frameCount;
+
+        if (avgDelay > 0)
+            outFps = 100.0f / avgDelay;
+    }
+
+    delete gif;
+    return frames;
 }
 
 // Return latest error for the animate object and clear the errors
